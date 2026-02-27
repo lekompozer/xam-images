@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XAM Gallery</title>
+    <!-- Inline favicon — prevents 502 from server on /favicon.ico request -->
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-R2LE483NH2"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'G-R2LE483NH2');
+    </script>
+    <style>
+        /* ===== RESET & BASE ===== */
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0f0f13;
+            --surface: #1a1a22;
+            --border: #2e2e3e;
+            --accent: #e05c5c;
+            --accent2: #9b5de5;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --radius: 10px;
+            --blur-px: 6px;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+        }
+
+        /* ===== HEADER ===== */
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: 1px;
+            white-space: nowrap;
+        }
+
+        .header-info {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        /* ===== CONTROLS ===== */
+        .controls {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .page-info {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .page-info span {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .toggle-blur-btn {
+            background: var(--accent2);
+            color: #fff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            transition: opacity .2s;
+        }
+
+        .toggle-blur-btn:hover {
+            opacity: .8;
+        }
+
+        /* ===== PAGINATION ===== */
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button,
+        .pagination .pg-jump-btn {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            transition: background .2s, border-color .2s;
+        }
+
+        .pagination button:hover,
+        .pagination .pg-jump-btn:hover {
+            background: var(--border);
+            border-color: var(--accent);
+        }
+
+        .pagination button:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        #page-input {
+            width: 60px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            padding: 5px 8px;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+
+        #page-input:focus {
+            outline: 1px solid var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* ===== LOADING STATE ===== */
+        #loading-bar {
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            width: 0%;
+            transition: width .3s;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+        }
+
+        /* ===== GRID ===== */
+        #gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            padding: 20px;
+        }
+
+        .img-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            position: relative;
+            aspect-ratio: 3/4;
+            cursor: pointer;
+            transition: transform .2s, border-color .2s;
+        }
+
+        .img-card:hover {
+            transform: scale(1.03);
+            border-color: var(--accent);
+        }
+
+        .img-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+            transition: filter .3s;
+            pointer-events: none;
+            /* prevent drag/right-click on <img> itself */
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        /* Transparent guard layer — captures right-click so image context menu never shows */
+        .img-guard {
+            position: absolute;
+            inset: 0;
+            z-index: 5;
+            cursor: pointer;
+        }
+
+        /* Blur overlay */
+        .img-card.blurred img {
+            filter: blur(var(--blur-px)) brightness(.7);
+        }
+
+        .blur-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .img-card:not(.blurred) .blur-overlay {
+            display: none;
+        }
+
+        .blur-icon {
+            font-size: 2rem;
+            line-height: 1;
+        }
+
+        .blur-label {
+            font-size: 0.72rem;
+            background: rgba(0, 0, 0, .7);
+            color: #fff;
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: .5px;
+            text-align: center;
+        }
+
+        /* ID badge */
+        .img-id {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: rgba(0, 0, 0, .65);
+            color: #bbb;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* Skeleton loading */
+        .img-card.skeleton {
+            cursor: default;
+            animation: shimmer 1.5s infinite;
+            background: linear-gradient(90deg, var(--surface) 25%, var(--border) 50%, var(--surface) 75%);
+            background-size: 200% 100%;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* Empty state */
+        #empty-state {
+            display: none;
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+            grid-column: 1/-1;
+        }
+
+        /* ===== LIGHTBOX ===== */
+        #lightbox {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .93);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        #lightbox.open {
+            display: flex;
+        }
+
+        #lb-img {
+            max-width: 90vw;
+            max-height: 90vh;
+            object-fit: contain;
+            border-radius: 8px;
+            box-shadow: 0 0 60px rgba(0, 0, 0, .8);
+            user-select: none;
+        }
+
+        #lb-close {
+            position: fixed;
+            top: 16px;
+            right: 20px;
+            background: rgba(255, 255, 255, .1);
+            border: 1px solid rgba(255, 255, 255, .2);
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .2s;
+        }
+
+        #lb-close:hover {
+            background: var(--accent);
+        }
+
+        .lb-nav {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .2);
+            color: #fff;
+            width: 48px;
+            height: 64px;
+            border-radius: 8px;
+            font-size: 1.4rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .2s;
+            z-index: 1001;
+        }
+
+        .lb-nav:hover {
+            background: rgba(255, 255, 255, .25);
+        }
+
+        #lb-prev {
+            left: 12px;
+        }
+
+        #lb-next {
+            right: 12px;
+        }
+
+        .lb-nav:disabled {
+            opacity: .25;
+            cursor: not-allowed;
+        }
+
+        #lb-counter {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, .6);
+            color: var(--text-dim);
+            font-size: 0.8rem;
+            padding: 5px 14px;
+            border-radius: 20px;
+            white-space: nowrap;
+        }
+
+        #lb-loader {
+            position: absolute;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        /* ═════ SAVED PANEL ═════ */
+        .saved-tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: border-color .2s, color .2s;
+        }
+
+        .saved-tab-btn:hover,
+        .saved-tab-btn.has-items {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .saved-badge {
+            background: var(--accent);
+            color: #fff;
+            border-radius: 10px;
+            padding: 1px 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: none;
+        }
+
+        .saved-badge.show {
+            display: inline-block;
+        }
+
+        #saved-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .55);
+            z-index: 400;
+        }
+
+        #saved-overlay.open {
+            display: block;
+        }
+
+        #saved-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 360px;
+            max-width: 100vw;
+            height: 100dvh;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            z-index: 401;
+            display: flex;
+            flex-direction: column;
+            transition: right .28s cubic-bezier(.4, 0, .2, 1);
+            box-shadow: -8px 0 32px rgba(0, 0, 0, .45);
+        }
+
+        #saved-panel.open {
+            right: 0;
+        }
+
+        .sp-head {
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .sp-head h3 {
+            font-size: 1rem;
+            color: var(--accent);
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .sp-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .sp-clear {
+            font-size: 0.73rem;
+            color: var(--text-dim);
+            background: none;
+            border: 1px solid var(--border);
+            padding: 3px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .sp-clear:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .sp-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .sp-close:hover {
+            color: var(--text);
+        }
+
+        .sp-uid {
+            padding: 6px 16px;
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            font-family: monospace;
+        }
+
+        #saved-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sp-empty {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            padding: 50px 20px;
+            line-height: 1.7;
+        }
+
+        .sp-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            transition: border-color .15s;
+        }
+
+        .sp-item:hover {
+            border-color: var(--accent2);
+        }
+
+        .sp-thumb {
+            width: 58px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 5px;
+            flex-shrink: 0;
+            background: var(--border);
+        }
+
+        .sp-thumb-icon {
+            width: 58px;
+            height: 44px;
+            border-radius: 5px;
+            flex-shrink: 0;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .sp-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sp-title {
+            font-size: 0.82rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .sp-sub {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .sp-del {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .sp-del:hover {
+            color: var(--accent);
+        }
+
+        .card-save-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            z-index: 10;
+            background: rgba(0, 0, 0, .6);
+            border: none;
+            color: rgba(255, 255, 255, .5);
+            font-size: 0.95rem;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity .15s, color .15s;
+            pointer-events: all;
+        }
+
+        .img-card:hover .card-save-btn {
+            opacity: 1;
+        }
+
+        .card-save-btn.saved {
+            opacity: 1 !important;
+            color: var(--accent) !important;
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 480px) {
+            #gallery {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 8px;
+                padding: 12px;
+            }
+
+            .lb-nav {
+                width: 36px;
+                height: 52px;
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loading-bar"></div>
+
+    <!-- HEADER -->
+    <header>
+        <a class="logo" href="?page=1">⚡ XAM Gallery</a>
+        <span class="header-info" id="range-info">Loading…</span>
+        <button class="saved-tab-btn" id="saved-tab-btn">📌 Saved <span class="saved-badge"
+                id="saved-badge">0</span></button>
+    </header>
+
+    <!-- CONTROLS + PAGINATION -->
+    <div class="controls">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <span class="page-info">Page <span id="cur-page-lbl">-</span> / <span id="total-pages-lbl">-</span></span>
+            <button class="toggle-blur-btn" id="toggle-all-blur">👁 Reveal All</button>
+        </div>
+        <div class="pagination" id="pagination-top"></div>
+    </div>
+
+    <!-- GALLERY -->
+    <main id="gallery"></main>
+
+    <!-- BOTTOM PAGINATION -->
+    <div class="controls" style="margin-top:0;padding:14px 20px;">
+        <span></span>
+        <div class="pagination" id="pagination-bottom"></div>
+    </div>
+
+    <!-- LIGHTBOX -->
+    <div id="lightbox" role="dialog" aria-modal="true">
+        <button id="lb-close" title="Close (Esc)">✕</button>
+        <button class="lb-nav" id="lb-prev" title="Previous (←)">&#8249;</button>
+        <span id="lb-loader">Loading…</span>
+        <img id="lb-img" src="" alt="Full size" draggable="false" />
+        <button class="lb-nav" id="lb-next" title="Next (→)">&#8250;</button>
+        <div id="lb-counter"></div>
+    </div>
+
+    <!-- SAVED PANEL -->
+    <div id="saved-overlay"></div>
+    <div id="saved-panel">
+        <div class="sp-head">
+            <h3>📌 Saved</h3>
+            <div class="sp-actions">
+                <button class="sp-clear" id="sp-clear-btn">Clear all</button>
+                <button class="sp-close" id="sp-close-btn">✕</button>
+            </div>
+        </div>
+        <div class="sp-uid" id="sp-uid-display"></div>
+        <div id="saved-list"></div>
+    </div>
+
+    <script>
+        // ══════════════════════════════════════════════
+        // CONFIG — edit these as needed
+        // ══════════════════════════════════════════════
+        const BASE_URL = 'https://xamvn.bond';
+        const START_ID = 47102;
+        const END_ID = 634220;
+        const IMAGES_PER_PAGE = 100;        // total IDs per pagination page
+        const LAZY_BATCH = 20;         // how many images to begin loading at once
+
+        // ══════════════════════════════════════════════
+        // DERIVED CONSTANTS
+        // ══════════════════════════════════════════════
+        const TOTAL_IDS = END_ID - START_ID + 1;
+        const TOTAL_PAGES = Math.ceil(TOTAL_IDS / IMAGES_PER_PAGE);
+
+        // ══════════════════════════════════════════════
+        // HELPERS
+        // ══════════════════════════════════════════════
+        function getPage() {
+            const p = parseInt(new URLSearchParams(location.search).get('page') || '1', 10);
+            return Math.max(1, Math.min(p, TOTAL_PAGES));
+        }
+
+        function imageUrl(id) {
+            return `${BASE_URL}/attachments/${id}/`;
+        }
+
+        function setLoadingBar(pct) {
+            document.getElementById('loading-bar').style.width = pct + '%';
+        }
+
+        // ══════════════════════════════════════════════
+        // STATE
+        // ══════════════════════════════════════════════
+        let currentPage = getPage();
+
+        let pageIds = [];   // all IDs for current page
+        let batchOffset = 0;   // how many IDs have been dispatched so far
+        let loadedCount = 0;   // successfully loaded images this page
+        let failedCount = 0;   // failed images this page
+        let observer = null;
+        let allRevealed = false;
+        let lightboxIndex = 0;
+        let savedLightboxItems = null; // null = DOM mode, array = saved mode
+
+        // Cards in DOM order — failed cards are removed so all remaining = loaded OK
+        function getLoadedCards() {
+            return [...document.querySelectorAll('#gallery .img-card:not(.skeleton)')];
+        }
+
+        // ══════════════════════════════════════════════
+        // PAGE IDS
+        // ══════════════════════════════════════════════
+        function getPageIds(page) {
+            const start = START_ID + (page - 1) * IMAGES_PER_PAGE;
+            const end = Math.min(start + IMAGES_PER_PAGE - 1, END_ID);
+            const ids = [];
+            for (let id = start; id <= end; id++) ids.push(id);
+            return ids;
+        }
+
+        // ══════════════════════════════════════════════
+        // PAGINATION WIDGET
+        // ══════════════════════════════════════════════
+        function renderPagination(containerId) {
+            const el = document.getElementById(containerId);
+            el.innerHTML = '';
+
+            const mkBtn = (label, page, disabled = false, active = false) => {
+                const b = document.createElement('button');
+                b.textContent = label;
+                if (disabled) b.disabled = true;
+                if (active) b.classList.add('active');
+                if (!disabled) b.onclick = () => goTo(page);
+                return b;
+            };
+
+            el.appendChild(mkBtn('« First', 1, currentPage === 1));
+            el.appendChild(mkBtn('‹ Prev', currentPage - 1, currentPage === 1));
+
+            // sliding window of page numbers
+            const window_size = 5;
+            let wStart = Math.max(1, currentPage - 2);
+            let wEnd = Math.min(TOTAL_PAGES, wStart + window_size - 1);
+            if (wEnd - wStart < window_size - 1) wStart = Math.max(1, wEnd - window_size + 1);
+
+            if (wStart > 1) {
+                el.appendChild(mkBtn('1', 1));
+                if (wStart > 2) { const sp = document.createElement('span'); sp.textContent = '…'; sp.style.cssText = 'color:var(--text-dim);padding:0 4px'; el.appendChild(sp); }
+            }
+            for (let p = wStart; p <= wEnd; p++) el.appendChild(mkBtn(p, p, false, p === currentPage));
+            if (wEnd < TOTAL_PAGES) {
+                if (wEnd < TOTAL_PAGES - 1) { const sp = document.createElement('span'); sp.textContent = '…'; sp.style.cssText = 'color:var(--text-dim);padding:0 4px'; el.appendChild(sp); }
+                el.appendChild(mkBtn(TOTAL_PAGES, TOTAL_PAGES));
+            }
+
+            el.appendChild(mkBtn('Next ›', currentPage + 1, currentPage === TOTAL_PAGES));
+            el.appendChild(mkBtn('Last »', TOTAL_PAGES, currentPage === TOTAL_PAGES));
+
+            // jump input
+            const inp = document.createElement('input');
+            inp.type = 'number'; inp.id = 'page-input'; inp.min = 1; inp.max = TOTAL_PAGES;
+            inp.placeholder = 'Go…'; inp.title = 'Jump to page';
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter') { const v = parseInt(inp.value, 10); if (v >= 1 && v <= TOTAL_PAGES) goTo(v); } });
+            el.appendChild(inp);
+
+            const jmpBtn = document.createElement('button');
+            jmpBtn.textContent = 'Go'; jmpBtn.className = 'pg-jump-btn';
+            jmpBtn.onclick = () => { const v = parseInt(inp.value, 10); if (v >= 1 && v <= TOTAL_PAGES) goTo(v); };
+            el.appendChild(jmpBtn);
+        }
+
+        function clearGalleryMemory() {
+            // Disconnect observer first
+            removeSentinel();
+            // Revoke all img.src so browser releases decoded bitmap memory immediately
+            document.querySelectorAll('#gallery img, #lb-img').forEach(img => {
+                img.src = '';
+                img.removeAttribute('src');
+            });
+            document.getElementById('gallery').innerHTML = '';
+        }
+
+        function goTo(page) {
+            clearGalleryMemory();
+            const url = new URL(location.href);
+            url.searchParams.set('page', page);
+            location.href = url.toString();
+        }
+
+        // Khi browser giữ page trong bfcache (back/forward), clear luôn để giải phóng RAM
+        window.addEventListener('pagehide', () => clearGalleryMemory());
+
+        // ══════════════════════════════════════════════
+        // GALLERY INIT
+        // ══════════════════════════════════════════════
+        function updateRangeInfo() {
+            const ids = pageIds;
+            if (!ids.length) return;
+            const settled = loadedCount + failedCount;
+            const total = ids.length;
+            const suffix = settled < total
+                ? ` · ${loadedCount} / ${total} ảnh · ${failedCount} lỗi (đang load…)`
+                : ` · ✓ ${loadedCount} ảnh · ${failedCount} lỗi`;
+            document.getElementById('range-info').textContent =
+                `IDs ${ids[0]}–${ids[ids.length - 1]}${suffix} · ${TOTAL_PAGES} trang`;
+        }
+
+        function initGallery() {
+            currentPage = getPage();
+            pageIds = getPageIds(currentPage);
+            batchOffset = 0;
+            loadedCount = 0;
+            failedCount = 0;
+
+            document.getElementById('cur-page-lbl').textContent = currentPage;
+            document.getElementById('total-pages-lbl').textContent = TOTAL_PAGES;
+            updateRangeInfo();
+
+            renderPagination('pagination-top');
+            renderPagination('pagination-bottom');
+
+            document.getElementById('gallery').innerHTML = '';
+
+            // Load first batch immediately, rest lazy
+            loadNextBatch();
+            setupSentinel();
+        }
+
+        // Build and append a single card to gallery (returns card element)
+        function createCard(id) {
+            const card = document.createElement('div');
+            card.className = 'img-card blurred skeleton';
+            card.dataset.id = id;
+            card.dataset.src = imageUrl(id);
+            card.dataset.loaded = 'false';
+
+            const badge = document.createElement('div');
+            badge.className = 'img-id';
+            badge.textContent = `#${id}`;
+
+            const img = document.createElement('img');
+            img.alt = `Image ${id}`;
+            img.draggable = false;
+
+            const overlay = document.createElement('div');
+            overlay.className = 'blur-overlay';
+            overlay.innerHTML = '<div class="blur-icon">🔞</div><div class="blur-label">Click để xem</div>';
+
+            // Guard overlay — blocks right-click exposing real src
+            const guard = document.createElement('div');
+            guard.className = 'img-guard';
+            guard.addEventListener('contextmenu', e => e.preventDefault());
+            guard.addEventListener('click', () => handleCardClick(card));
+
+            // Save button (above guard)
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'card-save-btn' + (isSaved(`img_${id}`) ? ' saved' : '');
+            saveBtn.dataset.key = `img_${id}`;
+            saveBtn.title = 'Save';
+            saveBtn.textContent = '🔖';
+            saveBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                const added = toggleSave({
+                    key: `img_${id}`, type: 'image',
+                    src: card.dataset.src, title: `Image #${id}`,
+                    id: String(id), page: currentPage
+                });
+                saveBtn.classList.toggle('saved', added);
+            });
+
+            card.appendChild(badge);
+            card.appendChild(img);
+            card.appendChild(overlay);
+            card.appendChild(guard);
+            card.appendChild(saveBtn);
+            document.getElementById('gallery').appendChild(card);
+            return card;
+        }
+
+        // ══════════════════════════════════════════════
+        // LAZY LOADING
+        // ══════════════════════════════════════════════
+        function loadNextBatch() {
+            if (batchOffset >= pageIds.length) {
+                removeSentinel();
+                setLoadingBar(100);
+                setTimeout(() => setLoadingBar(0), 600);
+                return;
+            }
+
+            const batchIds = pageIds.slice(batchOffset, batchOffset + LAZY_BATCH);
+            batchOffset += batchIds.length;
+
+            const totalIds = pageIds.length;
+            setLoadingBar(Math.round((batchOffset / totalIds) * 80)); // rough progress
+
+            let settledCount = 0;
+
+            batchIds.forEach(id => {
+                const card = createCard(id);   // create skeleton card now
+                const img = card.querySelector('img');
+                card.dataset.loaded = 'pending';
+
+                img.onload = () => {
+                    card.dataset.loaded = 'done';
+                    card.classList.remove('skeleton');
+                    loadedCount++;
+                    settledCount++;
+                    const settled = loadedCount + failedCount;
+                    setLoadingBar(Math.round((settled / totalIds) * 100));
+                    updateRangeInfo();
+                    if (settledCount === batchIds.length) {
+                        // Sentinel may still be in viewport after cards added — force next batch
+                        const s = document.getElementById('sentinel');
+                        if (s) {
+                            const rect = s.getBoundingClientRect();
+                            if (rect.top < window.innerHeight + 400) loadNextBatch();
+                        }
+                    }
+                };
+
+                img.onerror = () => {
+                    card.dataset.loaded = 'failed';
+                    card.remove();
+                    failedCount++;
+                    settledCount++;
+                    updateRangeInfo();
+                    if (settledCount === batchIds.length) {
+                        const s = document.getElementById('sentinel');
+                        if (s) {
+                            const rect = s.getBoundingClientRect();
+                            if (rect.top < window.innerHeight + 400) loadNextBatch();
+                        }
+                    }
+                };
+
+                img.src = card.dataset.src;
+            });
+        }
+
+        function setupSentinel() {
+            removeSentinel();
+            const sentinel = document.createElement('div');
+            sentinel.id = 'sentinel';
+            sentinel.style.cssText = 'height:40px;grid-column:1/-1;';
+            document.getElementById('gallery').appendChild(sentinel);
+
+            observer = new IntersectionObserver(entries => {
+                if (entries[0].isIntersecting) {
+                    loadNextBatch();
+                }
+            }, { rootMargin: '300px' });
+            observer.observe(sentinel);
+        }
+
+        function removeSentinel() {
+            if (observer) { observer.disconnect(); observer = null; }
+            const s = document.getElementById('sentinel');
+            if (s) s.remove();
+        }
+
+        // ══════════════════════════════════════════════
+        // BLUR TOGGLE
+        // ══════════════════════════════════════════════
+        function handleCardClick(card) {
+            if (card.classList.contains('blurred')) {
+                // Đang blur → click 1 lần để bỏ blur
+                card.classList.remove('blurred');
+            } else {
+                // Không blur → click mở lightbox
+                const cards = getLoadedCards();
+                const idx = cards.indexOf(card);
+                if (idx !== -1) openLightbox(idx);
+            }
+        }
+
+        // Block right-click on entire gallery (backup for any element not covered by guard)
+        document.getElementById('gallery').addEventListener('contextmenu', e => e.preventDefault());
+
+        document.getElementById('toggle-all-blur').addEventListener('click', () => {
+            allRevealed = !allRevealed;
+            const cards = document.querySelectorAll('.img-card');
+            cards.forEach(c => {
+                if (allRevealed) c.classList.remove('blurred');
+                else c.classList.add('blurred');
+            });
+            document.getElementById('toggle-all-blur').textContent = allRevealed ? '🙈 Blur All' : '👁 Reveal All';
+        });
+
+        // ══════════════════════════════════════════════
+        // LIGHTBOX
+        // ══════════════════════════════════════════════
+        const lightbox = document.getElementById('lightbox');
+        const lbImg = document.getElementById('lb-img');
+        const lbPrev = document.getElementById('lb-prev');
+        const lbNext = document.getElementById('lb-next');
+        const lbClose = document.getElementById('lb-close');
+        const lbCounter = document.getElementById('lb-counter');
+        const lbLoader = document.getElementById('lb-loader');
+
+        // Returns items for lightbox depending on mode
+        function getLightboxItems() {
+            return savedLightboxItems !== null ? savedLightboxItems : getLoadedCards();
+        }
+
+        function getLightboxSrc(item) {
+            // item = DOM card element (normal mode) or {src, title, key} (saved mode)
+            return savedLightboxItems !== null ? item.src : imageUrl(item.dataset.id);
+        }
+
+        function getLightboxLabel(index, items) {
+            const item = items[index];
+            const label = savedLightboxItems !== null
+                ? (item.title || item.key)
+                : `#${item.dataset.id}`;
+            const modeTag = savedLightboxItems !== null ? ' · 📌 Saved' : '';
+            return `${index + 1} / ${items.length}  ·  ${label}${modeTag}`;
+        }
+
+        function openLightbox(index) {
+            savedLightboxItems = null; // DOM mode
+            const items = getLightboxItems();
+            lightboxIndex = Math.max(0, Math.min(index, items.length - 1));
+            lightbox.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            showLightboxImage(lightboxIndex);
+        }
+
+        function openSavedLightbox(startKey) {
+            const arr = getSaved().filter(x => x.type === 'image');
+            if (!arr.length) return;
+            savedLightboxItems = arr;
+            const startIndex = arr.findIndex(x => x.key === startKey);
+            lightboxIndex = Math.max(0, startIndex === -1 ? 0 : startIndex);
+            lightbox.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            showLightboxImage(lightboxIndex);
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('open');
+            document.body.style.overflow = '';
+            lbImg.src = '';
+            savedLightboxItems = null; // reset mode
+        }
+
+        function showLightboxImage(index) {
+            const items = getLightboxItems();
+            const item = items[index];
+            if (!item) return;
+            const src = getLightboxSrc(item);
+
+            lbImg.style.opacity = '0';
+            lbLoader.style.display = 'block';
+            lbLoader.textContent = 'Loading…';
+
+            lbImg.onload = () => {
+                lbLoader.style.display = 'none';
+                lbImg.style.opacity = '1';
+                lbImg.style.transition = 'opacity .2s';
+            };
+            lbImg.onerror = () => {
+                lbLoader.style.display = 'none';
+                lbLoader.textContent = 'Failed to load image';
+                lbImg.style.opacity = '0';
+            };
+
+            lbImg.src = src;
+            lbCounter.textContent = getLightboxLabel(index, items);
+            lbPrev.disabled = index === 0;
+            lbNext.disabled = index === items.length - 1;
+        }
+
+        lbPrev.addEventListener('click', (e) => { e.stopPropagation(); if (lightboxIndex > 0) showLightboxImage(--lightboxIndex); });
+        lbNext.addEventListener('click', (e) => { e.stopPropagation(); if (lightboxIndex < getLightboxItems().length - 1) showLightboxImage(++lightboxIndex); });
+        lbClose.addEventListener('click', closeLightbox);
+        lightbox.addEventListener('click', e => { if (e.target === lightbox) closeLightbox(); });
+        lightbox.addEventListener('contextmenu', e => e.preventDefault());
+
+        document.addEventListener('keydown', e => {
+            if (!lightbox.classList.contains('open')) return;
+            if (e.key === 'ArrowLeft' && lightboxIndex > 0) showLightboxImage(--lightboxIndex);
+            if (e.key === 'ArrowRight' && lightboxIndex < getLightboxItems().length - 1) showLightboxImage(++lightboxIndex);
+            if (e.key === 'Escape') closeLightbox();
+        });
+
+        // Touch swipe for lightbox
+        let touchStartX = 0;
+        lightbox.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+        lightbox.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - touchStartX;
+            if (Math.abs(dx) > 60) {
+                if (dx < 0 && lightboxIndex < getLightboxItems().length - 1) showLightboxImage(++lightboxIndex);
+                if (dx > 0 && lightboxIndex > 0) showLightboxImage(--lightboxIndex);
+            }
+        });
+
+        // ══════════════════════════════════════════════
+        // SAVED MODULE
+        // ══════════════════════════════════════════════
+        const SAVED_KEY = 'xam_saved';
+        const UID_KEY = 'xam_uid';
+
+        function getBrowserId() {
+            let id = localStorage.getItem(UID_KEY);
+            if (!id) {
+                id = 'xam_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+                localStorage.setItem(UID_KEY, id);
+            }
+            return id;
+        }
+
+        function getSaved() {
+            try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch { return []; }
+        }
+        function setSaved(arr) { localStorage.setItem(SAVED_KEY, JSON.stringify(arr)); }
+        function isSaved(key) { return getSaved().some(x => x.key === key); }
+
+        function toggleSave(item) {
+            const arr = getSaved();
+            const idx = arr.findIndex(x => x.key === item.key);
+            if (idx === -1) arr.unshift({ ...item, savedAt: Date.now() });
+            else arr.splice(idx, 1);
+            setSaved(arr);
+            updateSavedBadge();
+            if (document.getElementById('saved-panel').classList.contains('open')) renderSavedPanel();
+            return idx === -1;
+        }
+
+        function updateSavedBadge() {
+            const n = getSaved().length;
+            const badge = document.getElementById('saved-badge');
+            const btn = document.getElementById('saved-tab-btn');
+            badge.textContent = n;
+            badge.classList.toggle('show', n > 0);
+            btn.classList.toggle('has-items', n > 0);
+        }
+
+        function openSavedPanel() {
+            document.getElementById('saved-panel').classList.add('open');
+            document.getElementById('saved-overlay').classList.add('open');
+            renderSavedPanel();
+        }
+
+        function closeSavedPanel() {
+            document.getElementById('saved-panel').classList.remove('open');
+            document.getElementById('saved-overlay').classList.remove('open');
+        }
+
+        function renderSavedPanel() {
+            const list = document.getElementById('saved-list');
+            const arr = getSaved();
+            if (!arr.length) {
+                list.innerHTML = '<div class="sp-empty">Chưa lưu gì cả.<br><br>Bấm 🔖 trên card để lưu.</div>';
+                return;
+            }
+            list.innerHTML = '';
+            arr.forEach((item, idx) => {
+                const el = document.createElement('div');
+                el.className = 'sp-item';
+                el.onclick = () => {
+                    if (item.type === 'image') {
+                        closeSavedPanel();
+                        openSavedLightbox(item.key);
+                    } else {
+                        window.open(item.src, '_blank');
+                    }
+                };
+
+                if (item.type === 'image') {
+                    const img = document.createElement('img');
+                    img.className = 'sp-thumb';
+                    img.src = item.src;
+                    img.onerror = () => img.style.opacity = '.3';
+                    el.appendChild(img);
+                } else {
+                    const icon = document.createElement('div');
+                    icon.className = 'sp-thumb-icon';
+                    icon.textContent = '🎬';
+                    el.appendChild(icon);
+                }
+
+                const info = document.createElement('div');
+                info.className = 'sp-info';
+                info.innerHTML = `<span class="sp-title">${item.title || item.key}</span><div class="sp-sub">${item.type === 'image' ? `#${item.id} · Page ${item.page}` : (item.meta || '')}</div>`;
+                el.appendChild(info);
+
+                const del = document.createElement('button');
+                del.className = 'sp-del'; del.textContent = '✕'; del.title = 'Remove';
+                del.onclick = e => {
+                    e.stopPropagation();
+                    setSaved(getSaved().filter(x => x.key !== item.key));
+                    updateSavedBadge(); renderSavedPanel();
+                    document.querySelectorAll(`.card-save-btn[data-key="${item.key}"]`).forEach(b => b.classList.remove('saved'));
+                };
+                el.appendChild(del);
+                list.appendChild(el);
+            });
+        }
+
+        // Init saved module
+        document.getElementById('sp-uid-display').textContent = `ID: ${getBrowserId()}`;
+        document.getElementById('saved-tab-btn').addEventListener('click', openSavedPanel);
+        document.getElementById('sp-close-btn').addEventListener('click', closeSavedPanel);
+        document.getElementById('saved-overlay').addEventListener('click', closeSavedPanel);
+        document.getElementById('sp-clear-btn').addEventListener('click', () => {
+            if (!confirm('Xoá tất cả saved items?')) return;
+            setSaved([]); updateSavedBadge(); renderSavedPanel();
+            document.querySelectorAll('.card-save-btn.saved').forEach(b => b.classList.remove('saved'));
+        });
+        updateSavedBadge();
+
+        // ══════════════════════════════════════════════
+        // BOOT
+        // ══════════════════════════════════════════════
+        initGallery();
+    </script>
+</body>
+
+</html>

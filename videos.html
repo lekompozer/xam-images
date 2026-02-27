@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XAM Video Gallery</title>
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        :root {
+            --bg: #0f0f13;
+            --surface: #1a1a22;
+            --border: #2e2e3e;
+            --accent: #e05c5c;
+            --accent2: #9b5de5;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --radius: 10px;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+        }
+
+        .wrapper {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* HEADER */
+        header {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+            letter-spacing: 1px;
+        }
+
+        .header-info {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        /* CONTROLS */
+        .controls {
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .page-info {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+        }
+
+        .page-info span {
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        /* PAGINATION */
+        .pagination {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .pagination button,
+        .pg-jump-btn {
+            background: var(--surface);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            transition: background .2s, border-color .2s;
+        }
+
+        .pagination button:hover,
+        .pg-jump-btn:hover {
+            background: var(--border);
+            border-color: var(--accent);
+        }
+
+        .pagination button:disabled {
+            opacity: .35;
+            cursor: not-allowed;
+        }
+
+        .pagination button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        #page-input {
+            width: 60px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 6px;
+            padding: 5px 8px;
+            font-size: 0.82rem;
+            text-align: center;
+        }
+
+        #page-input:focus {
+            outline: 1px solid var(--accent);
+            border-color: var(--accent);
+        }
+
+        /* LOADING BAR */
+        #loading-bar {
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            width: 0%;
+            transition: width .3s;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 9999;
+        }
+
+        /* GALLERY */
+        #gallery {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            padding: 24px;
+        }
+
+        .video-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            transition: border-color .2s;
+            position: relative;
+        }
+
+        .video-card:hover {
+            border-color: var(--accent2);
+        }
+
+        /* single video card */
+        .video-card video {
+            width: 100%;
+            max-height: 480px;
+            display: block;
+            background: #000;
+            outline: none;
+        }
+
+        .video-card-header {
+            padding: 10px 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .video-title {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .video-thread-link {
+            font-size: 0.75rem;
+            color: var(--accent2);
+            text-decoration: none;
+            white-space: nowrap;
+            padding: 3px 8px;
+            border: 1px solid var(--accent2);
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .video-thread-link:hover {
+            background: var(--accent2);
+            color: #fff;
+        }
+
+        /* error / loading state */
+        #status-msg {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+        }
+
+        #status-msg a {
+            color: var(--accent2);
+        }
+
+        /* RESPONSIVE */
+        /* ═════ SAVED PANEL ═════ */
+        .saved-tab-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: none;
+            color: var(--text-dim);
+            border: 1px solid var(--border);
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: border-color .2s, color .2s;
+        }
+
+        .saved-tab-btn:hover,
+        .saved-tab-btn.has-items {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .saved-badge {
+            background: var(--accent);
+            color: #fff;
+            border-radius: 10px;
+            padding: 1px 6px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            display: none;
+        }
+
+        .saved-badge.show {
+            display: inline-block;
+        }
+
+        #saved-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .55);
+            z-index: 400;
+        }
+
+        #saved-overlay.open {
+            display: block;
+        }
+
+        #saved-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 360px;
+            max-width: 100vw;
+            height: 100dvh;
+            background: var(--surface);
+            border-left: 1px solid var(--border);
+            z-index: 401;
+            display: flex;
+            flex-direction: column;
+            transition: right .28s cubic-bezier(.4, 0, .2, 1);
+            box-shadow: -8px 0 32px rgba(0, 0, 0, .45);
+        }
+
+        #saved-panel.open {
+            right: 0;
+        }
+
+        .sp-head {
+            padding: 16px 16px 12px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .sp-head h3 {
+            font-size: 1rem;
+            color: var(--accent);
+            margin: 0;
+            font-weight: 700;
+        }
+
+        .sp-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .sp-clear {
+            font-size: 0.73rem;
+            color: var(--text-dim);
+            background: none;
+            border: 1px solid var(--border);
+            padding: 3px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .sp-clear:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+        }
+
+        .sp-close {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+        }
+
+        .sp-close:hover {
+            color: var(--text);
+        }
+
+        .sp-uid {
+            padding: 6px 16px;
+            font-size: 0.68rem;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            font-family: monospace;
+        }
+
+        #saved-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sp-empty {
+            text-align: center;
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            padding: 50px 20px;
+            line-height: 1.7;
+        }
+
+        .sp-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            cursor: pointer;
+            transition: border-color .15s;
+        }
+
+        .sp-item:hover {
+            border-color: var(--accent2);
+        }
+
+        .sp-thumb {
+            width: 58px;
+            height: 44px;
+            object-fit: cover;
+            border-radius: 5px;
+            flex-shrink: 0;
+            background: var(--border);
+        }
+
+        .sp-thumb-icon {
+            width: 58px;
+            height: 44px;
+            border-radius: 5px;
+            flex-shrink: 0;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .sp-info {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .sp-title {
+            font-size: 0.82rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
+        }
+
+        .sp-sub {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            margin-top: 2px;
+        }
+
+        .sp-del {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 4px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .sp-del:hover {
+            color: var(--accent);
+        }
+
+        .card-save-btn {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            z-index: 10;
+            background: rgba(0, 0, 0, .6);
+            border: none;
+            color: rgba(255, 255, 255, .5);
+            font-size: 0.95rem;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity .15s, color .15s;
+            pointer-events: all;
+        }
+
+        .video-card:hover .card-save-btn {
+            opacity: 1;
+        }
+
+        .card-save-btn.saved {
+            opacity: 1 !important;
+            color: var(--accent) !important;
+        }
+
+        @media (max-width: 600px) {
+            #gallery {
+                padding: 12px;
+                gap: 16px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper">
+        <div id="loading-bar"></div>
+
+        <header>
+            <a class="logo" href="?page=1">🎬 XAM Videos</a>
+            <span class="header-info" id="header-info">Loading…</span>
+            <button class="saved-tab-btn" id="saved-tab-btn">📌 Saved <span class="saved-badge"
+                    id="saved-badge">0</span></button>
+        </header>
+
+        <div class="controls" id="controls-top">
+            <span class="page-info">Page <span id="cur-page-lbl">-</span> / <span id="total-pages-lbl">-</span></span>
+            <div class="pagination" id="pagination-top"></div>
+        </div>
+
+        <main id="gallery">
+            <div id="status-msg">Loading videos.json…</div>
+        </main>
+
+        <div class="controls" style="margin-top:0;padding:14px 20px;">
+            <span></span>
+            <div class="pagination" id="pagination-bottom"></div>
+        </div>
+
+        <!-- SAVED PANEL -->
+        <div id="saved-overlay"></div>
+        <div id="saved-panel">
+            <div class="sp-head">
+                <h3>📌 Saved</h3>
+                <div class="sp-actions">
+                    <button class="sp-clear" id="sp-clear-btn">Clear all</button>
+                    <button class="sp-close" id="sp-close-btn">✕</button>
+                </div>
+            </div>
+            <div class="sp-uid" id="sp-uid-display"></div>
+            <div id="saved-list"></div>
+        </div>
+
+        <script>
+            // ══════════════════════════════════════════════
+            // CONFIG
+            // ══════════════════════════════════════════════
+            const VIDEOS_PER_PAGE = 10;   // flat video cards per page
+            const LAZY_BATCH = 10;        // cards revealed per scroll batch
+
+            // ══════════════════════════════════════════════
+            // STATE
+            // ══════════════════════════════════════════════
+            let allVideos = [];    // flat array: [{src, title, threadUrl}]
+            let pageItems = [];    // slice for current page
+            let batchOffset = 0;
+            let currentPage = 1;
+            let totalPages = 1;
+            let observer = null;
+
+            function getPage() {
+                const p = parseInt(new URLSearchParams(location.search).get('page') || '1', 10);
+                return Math.max(1, p);
+            }
+
+            function setLoadingBar(pct) {
+                document.getElementById('loading-bar').style.width = pct + '%';
+            }
+
+            // ══════════════════════════════════════════════
+            // LOAD DATA
+            // ══════════════════════════════════════════════
+            async function loadData() {
+                try {
+                    const r = await fetch('videos.json');
+                    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+                    const data = await r.json();
+                    // flatten threads → individual video entries
+                    allVideos = [];
+                    for (const t of (data.threads || [])) {
+                        for (const src of (t.videos || [])) {
+                            // skip malformed URLs (encoded, non-http)
+                            if (!src.startsWith('http')) continue;
+                            if (src.includes('%3A') || src.includes('[')) continue;
+                            allVideos.push({ src, title: t.title || '', threadUrl: t.url || '' });
+                        }
+                    }
+                    return true;
+                } catch (e) {
+                    document.getElementById('status-msg').innerHTML =
+                        `<b>Không tìm thấy videos.json</b><br><br>
+                        Chạy crawler trước:<br>
+                        <code style="background:#1a1a22;padding:4px 8px;border-radius:4px;">python crawl_videos.py</code><br><br>
+                        <small>Mở qua local server: <code>python -m http.server 8080</code></small>`;
+                    return false;
+                }
+            }
+
+            // ══════════════════════════════════════════════
+            // PAGINATION
+            // ══════════════════════════════════════════════
+            function renderPagination(containerId) {
+                const el = document.getElementById(containerId);
+                el.innerHTML = '';
+
+                const mkBtn = (label, page, disabled = false, active = false) => {
+                    const b = document.createElement('button');
+                    b.textContent = label;
+                    if (disabled) b.disabled = true;
+                    if (active) b.classList.add('active');
+                    if (!disabled) b.onclick = () => goTo(page);
+                    return b;
+                };
+
+                el.appendChild(mkBtn('« First', 1, currentPage === 1));
+                el.appendChild(mkBtn('‹ Prev', currentPage - 1, currentPage === 1));
+
+                const wSize = 5;
+                let wStart = Math.max(1, currentPage - 2);
+                let wEnd = Math.min(totalPages, wStart + wSize - 1);
+                if (wEnd - wStart < wSize - 1) wStart = Math.max(1, wEnd - wSize + 1);
+
+                if (wStart > 1) {
+                    el.appendChild(mkBtn('1', 1));
+                    if (wStart > 2) { const sp = document.createElement('span'); sp.textContent = '…'; sp.style.cssText = 'color:var(--text-dim);padding:0 4px'; el.appendChild(sp); }
+                }
+                for (let p = wStart; p <= wEnd; p++) el.appendChild(mkBtn(p, p, false, p === currentPage));
+                if (wEnd < totalPages) {
+                    if (wEnd < totalPages - 1) { const sp = document.createElement('span'); sp.textContent = '…'; sp.style.cssText = 'color:var(--text-dim);padding:0 4px'; el.appendChild(sp); }
+                    el.appendChild(mkBtn(totalPages, totalPages));
+                }
+
+                el.appendChild(mkBtn('Next ›', currentPage + 1, currentPage === totalPages));
+                el.appendChild(mkBtn('Last »', totalPages, currentPage === totalPages));
+
+                const inp = document.createElement('input');
+                inp.type = 'number';
+                inp.id = (containerId === 'pagination-top') ? 'page-input' : 'page-input-b';
+                inp.min = 1; inp.max = totalPages; inp.placeholder = 'Go…';
+                inp.addEventListener('keydown', e => { if (e.key === 'Enter') { const v = parseInt(inp.value, 10); if (v >= 1 && v <= totalPages) goTo(v); } });
+                el.appendChild(inp);
+
+                const jb = document.createElement('button');
+                jb.textContent = 'Go'; jb.className = 'pg-jump-btn';
+                jb.onclick = () => { const v = parseInt(inp.value, 10); if (v >= 1 && v <= totalPages) goTo(v); };
+                el.appendChild(jb);
+            }
+
+            function goTo(page) {
+                const url = new URL(location.href);
+                url.searchParams.set('page', page);
+                location.href = url.toString();
+            }
+
+            // ══════════════════════════════════════════════
+            // VIDEO CARD
+            // ══════════════════════════════════════════════
+            function createVideoCard({ src, title, threadUrl }) {
+                const card = document.createElement('div');
+                card.className = 'video-card';
+
+                const hdr = document.createElement('div');
+                hdr.className = 'video-card-header';
+
+                const ttl = document.createElement('div');
+                ttl.className = 'video-title';
+                ttl.textContent = title || threadUrl;
+
+                const link = document.createElement('a');
+                link.className = 'video-thread-link';
+                link.href = threadUrl;
+                link.target = '_blank';
+                link.rel = 'noopener';
+                link.textContent = 'Thread ↗';
+
+                hdr.appendChild(ttl);
+                hdr.appendChild(link);
+                card.appendChild(hdr);
+
+                const vid = document.createElement('video');
+                vid.controls = true;
+                vid.preload = 'metadata';
+                vid.setAttribute('controlslist', 'nodownload');
+                vid.addEventListener('contextmenu', e => e.preventDefault());
+                vid.src = src;
+
+                // dead link → remove card silently
+                vid.addEventListener('error', () => card.remove());
+
+                // Save button
+                const saveKey = 'vid_' + src.replace(/[^a-z0-9]/gi, '').slice(-20);
+                const saveBtn = document.createElement('button');
+                saveBtn.className = 'card-save-btn' + (isSaved(saveKey) ? ' saved' : '');
+                saveBtn.dataset.key = saveKey;
+                saveBtn.title = 'Save';
+                saveBtn.textContent = '🔖';
+                saveBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const added = toggleSave({
+                        key: saveKey, type: 'video',
+                        src, title: title || threadUrl,
+                        meta: threadUrl
+                    });
+                    saveBtn.classList.toggle('saved', added);
+                });
+
+                card.appendChild(vid);
+                card.appendChild(saveBtn);
+                return card;
+            }
+
+            // ══════════════════════════════════════════════
+            // LAZY LOADING
+            // ══════════════════════════════════════════════
+            function loadNextBatch() {
+                if (batchOffset >= pageItems.length) {
+                    removeSentinel();
+                    setLoadingBar(100);
+                    setTimeout(() => setLoadingBar(0), 500);
+                    return;
+                }
+
+                const batch = pageItems.slice(batchOffset, batchOffset + LAZY_BATCH);
+                batchOffset += batch.length;
+
+                const gallery = document.getElementById('gallery');
+                batch.forEach(item => gallery.appendChild(createVideoCard(item)));
+
+                setLoadingBar(Math.round((batchOffset / pageItems.length) * 100));
+
+                if (batchOffset >= pageItems.length) {
+                    removeSentinel();
+                    setLoadingBar(100);
+                    setTimeout(() => setLoadingBar(0), 500);
+                } else {
+                    setupSentinel();
+                }
+            }
+
+            function setupSentinel() {
+                removeSentinel();
+                const gallery = document.getElementById('gallery');
+                const sentinel = document.createElement('div');
+                sentinel.id = 'sentinel';
+                sentinel.style.cssText = 'height:40px;';
+                gallery.appendChild(sentinel);
+
+                observer = new IntersectionObserver(entries => {
+                    if (entries[0].isIntersecting) {
+                        observer.disconnect();
+                        observer = null;
+                        loadNextBatch();
+                    }
+                }, { rootMargin: '300px' });
+                observer.observe(sentinel);
+            }
+
+            function removeSentinel() {
+                if (observer) { observer.disconnect(); observer = null; }
+                const s = document.getElementById('sentinel');
+                if (s) s.remove();
+            }
+
+            // ══════════════════════════════════════════════
+            // RENDER PAGE
+            // ══════════════════════════════════════════════
+            function renderPage() {
+                totalPages = Math.ceil(allVideos.length / VIDEOS_PER_PAGE);
+                currentPage = Math.max(1, Math.min(getPage(), totalPages || 1));
+
+                const start = (currentPage - 1) * VIDEOS_PER_PAGE;
+                pageItems = allVideos.slice(start, start + VIDEOS_PER_PAGE);
+                batchOffset = 0;
+
+                document.getElementById('cur-page-lbl').textContent = currentPage;
+                document.getElementById('total-pages-lbl').textContent = totalPages;
+                document.getElementById('header-info').textContent =
+                    `${allVideos.length} videos · ${totalPages} pages`;
+
+                renderPagination('pagination-top');
+                renderPagination('pagination-bottom');
+
+                const gallery = document.getElementById('gallery');
+                gallery.innerHTML = '';
+                setLoadingBar(10);
+
+                loadNextBatch();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            // ══════════════════════════════════════════════
+            // SAVED MODULE
+            // ══════════════════════════════════════════════
+            const SAVED_KEY = 'xam_saved';
+            const UID_KEY = 'xam_uid';
+
+            function getBrowserId() {
+                let id = localStorage.getItem(UID_KEY);
+                if (!id) {
+                    id = 'xam_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9);
+                    localStorage.setItem(UID_KEY, id);
+                }
+                return id;
+            }
+
+            function getSaved() {
+                try { return JSON.parse(localStorage.getItem(SAVED_KEY) || '[]'); } catch { return []; }
+            }
+            function setSaved(arr) { localStorage.setItem(SAVED_KEY, JSON.stringify(arr)); }
+            function isSaved(key) { return getSaved().some(x => x.key === key); }
+
+            function toggleSave(item) {
+                const arr = getSaved();
+                const idx = arr.findIndex(x => x.key === item.key);
+                if (idx === -1) arr.unshift({ ...item, savedAt: Date.now() });
+                else arr.splice(idx, 1);
+                setSaved(arr);
+                updateSavedBadge();
+                if (document.getElementById('saved-panel').classList.contains('open')) renderSavedPanel();
+                return idx === -1;
+            }
+
+            function updateSavedBadge() {
+                const n = getSaved().length;
+                const badge = document.getElementById('saved-badge');
+                const btn = document.getElementById('saved-tab-btn');
+                badge.textContent = n;
+                badge.classList.toggle('show', n > 0);
+                btn.classList.toggle('has-items', n > 0);
+            }
+
+            function openSavedPanel() {
+                document.getElementById('saved-panel').classList.add('open');
+                document.getElementById('saved-overlay').classList.add('open');
+                renderSavedPanel();
+            }
+
+            function closeSavedPanel() {
+                document.getElementById('saved-panel').classList.remove('open');
+                document.getElementById('saved-overlay').classList.remove('open');
+            }
+
+            function renderSavedPanel() {
+                const list = document.getElementById('saved-list');
+                const arr = getSaved();
+                if (!arr.length) {
+                    list.innerHTML = '<div class="sp-empty">Chưa lưu gì cả.<br><br>Bấm 🔖 trên card để lưu.</div>';
+                    return;
+                }
+                list.innerHTML = '';
+                arr.forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'sp-item';
+                    el.onclick = () => window.open(item.type === 'image' ? item.src : (item.meta || item.src), '_blank');
+
+                    if (item.type === 'image') {
+                        const img = document.createElement('img');
+                        img.className = 'sp-thumb'; img.src = item.src;
+                        img.onerror = () => img.style.opacity = '.3';
+                        el.appendChild(img);
+                    } else {
+                        const icon = document.createElement('div');
+                        icon.className = 'sp-thumb-icon'; icon.textContent = '🎬';
+                        el.appendChild(icon);
+                    }
+
+                    const info = document.createElement('div');
+                    info.className = 'sp-info';
+                    info.innerHTML = `<span class="sp-title">${item.title || item.key}</span><div class="sp-sub">${item.type === 'image' ? `#${item.id} · Page ${item.page}` : (item.meta || '')}</div>`;
+                    el.appendChild(info);
+
+                    const del = document.createElement('button');
+                    del.className = 'sp-del'; del.textContent = '✕'; del.title = 'Remove';
+                    del.onclick = e => {
+                        e.stopPropagation();
+                        setSaved(getSaved().filter(x => x.key !== item.key));
+                        updateSavedBadge(); renderSavedPanel();
+                        document.querySelectorAll(`.card-save-btn[data-key="${item.key}"]`).forEach(b => b.classList.remove('saved'));
+                    };
+                    el.appendChild(del);
+                    list.appendChild(el);
+                });
+            }
+
+            // Init saved module
+            document.getElementById('sp-uid-display').textContent = `ID: ${getBrowserId()}`;
+            document.getElementById('saved-tab-btn').addEventListener('click', openSavedPanel);
+            document.getElementById('sp-close-btn').addEventListener('click', closeSavedPanel);
+            document.getElementById('saved-overlay').addEventListener('click', closeSavedPanel);
+            document.getElementById('sp-clear-btn').addEventListener('click', () => {
+                if (!confirm('Xoá tất cả saved items?')) return;
+                setSaved([]); updateSavedBadge(); renderSavedPanel();
+                document.querySelectorAll('.card-save-btn.saved').forEach(b => b.classList.remove('saved'));
+            });
+            updateSavedBadge();
+
+            // ══════════════════════════════════════════════
+            // BOOT
+            // ══════════════════════════════════════════════
+            (async () => {
+                setLoadingBar(10);
+                const ok = await loadData();
+                if (ok) renderPage();
+            })();
+        </script>
+    </div><!-- /.wrapper -->
+
+</html>
