@@ -1103,24 +1103,40 @@
         }
 
         function getTotalPages() {
-            if (activeGlobalTag && window.TAGS_DATA && window.TAGS_DATA.items && window.TAGS_DATA.items[activeGlobalTag]) {
-                const trash = getTrashSet();
-                const ids = activeGlobalTag === 'trash'
-                    ? window.TAGS_DATA.items['trash']
-                    : window.TAGS_DATA.items[activeGlobalTag].filter(id => !trash.has(id));
-                return Math.max(1, Math.ceil(ids.length / IMAGES_PER_PAGE));
+            if (activeGlobalTag && window.TAGS_DATA) {
+                // Album items (CDN URL list, e.g. from anh.moe)
+                if (window.TAGS_DATA.album_items && window.TAGS_DATA.album_items[activeGlobalTag]) {
+                    return Math.max(1, Math.ceil(window.TAGS_DATA.album_items[activeGlobalTag].length / IMAGES_PER_PAGE));
+                }
+                // Regular integer ID items
+                if (window.TAGS_DATA.items && window.TAGS_DATA.items[activeGlobalTag]) {
+                    const trash = getTrashSet();
+                    const ids = activeGlobalTag === 'trash'
+                        ? window.TAGS_DATA.items['trash']
+                        : window.TAGS_DATA.items[activeGlobalTag].filter(id => !trash.has(id));
+                    return Math.max(1, Math.ceil(ids.length / IMAGES_PER_PAGE));
+                }
             }
             return TOTAL_PAGES;
         }
 
         function getPageIds(page) {
             const trash = getTrashSet();
-            if (activeGlobalTag && window.TAGS_DATA && window.TAGS_DATA.items && window.TAGS_DATA.items[activeGlobalTag]) {
-                const allIds = activeGlobalTag === 'trash'
-                    ? window.TAGS_DATA.items['trash']
-                    : window.TAGS_DATA.items[activeGlobalTag].filter(id => !trash.has(id));
-                const start = (page - 1) * IMAGES_PER_PAGE;
-                return allIds.slice(start, start + IMAGES_PER_PAGE);
+            if (activeGlobalTag && window.TAGS_DATA) {
+                // Album items (CDN URL list)
+                if (window.TAGS_DATA.album_items && window.TAGS_DATA.album_items[activeGlobalTag]) {
+                    const allUrls = window.TAGS_DATA.album_items[activeGlobalTag];
+                    const start = (page - 1) * IMAGES_PER_PAGE;
+                    return allUrls.slice(start, start + IMAGES_PER_PAGE);
+                }
+                // Regular integer ID items
+                if (window.TAGS_DATA.items && window.TAGS_DATA.items[activeGlobalTag]) {
+                    const allIds = activeGlobalTag === 'trash'
+                        ? window.TAGS_DATA.items['trash']
+                        : window.TAGS_DATA.items[activeGlobalTag].filter(id => !trash.has(id));
+                    const start = (page - 1) * IMAGES_PER_PAGE;
+                    return allIds.slice(start, start + IMAGES_PER_PAGE);
+                }
             }
             // page 1 = newest (END_ID down), last page = oldest (START_ID)
             // fill up to IMAGES_PER_PAGE non-trash IDs
@@ -1292,6 +1308,8 @@
 
         // Build and append a single card to gallery (returns card element)
         function createCard(id) {
+            // URL-based card (e.g. from anh.moe album)
+            if (typeof id === 'string' && id.startsWith('http')) return createUrlCard(id);
             const card = document.createElement('div');
             card.className = 'img-card blurred skeleton';
             card.dataset.id = id;
@@ -1346,6 +1364,29 @@
             card.appendChild(overlay);
             card.appendChild(guard);
             card.appendChild(saveBtn);
+            document.getElementById('gallery').appendChild(card);
+            return card;
+        }
+
+        // URL-based image card — renders CDN image directly, no integer ID, no blur
+        function createUrlCard(url) {
+            const card = document.createElement('div');
+            card.className = 'img-card skeleton';
+            card.dataset.id = url;
+            card.dataset.src = url;
+
+            const img = document.createElement('img');
+            img.alt = 'Image';
+            img.draggable = false;
+            img.referrerPolicy = 'no-referrer';
+
+            const guard = document.createElement('div');
+            guard.className = 'img-guard';
+            guard.addEventListener('contextmenu', e => e.preventDefault());
+            guard.addEventListener('click', () => handleCardClick(card));
+
+            card.appendChild(img);
+            card.appendChild(guard);
             document.getElementById('gallery').appendChild(card);
             return card;
         }
@@ -1478,7 +1519,11 @@
 
         function getLightboxSrc(item) {
             // item = DOM card element (normal mode) or {src, title, key} (saved mode)
-            return savedLightboxItems !== null ? item.src : imageUrl(item.dataset.id);
+            if (savedLightboxItems !== null) return item.src;
+            const id = item.dataset.id;
+            // URL-based card (anh.moe album) — use directly
+            if (typeof id === 'string' && id.startsWith('http')) return id;
+            return imageUrl(id);
         }
 
         function getLightboxLabel(index, items) {
