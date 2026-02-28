@@ -550,18 +550,25 @@
 
         .sp-item {
             display: flex;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            gap: 2px;
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 8px;
-            cursor: pointer;
+            cursor: default;
             transition: border-color .15s;
         }
 
         .sp-item:hover {
             border-color: var(--accent2);
+        }
+
+        .sp-item-main {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
         }
 
         .sp-thumb {
@@ -620,6 +627,236 @@
 
         .sp-del:hover {
             color: var(--accent);
+        }
+
+        /* ===== TAG SYSTEM ===== */
+        #sp-tag-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            padding: 7px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sp-tag-chip {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            padding: 2px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: border-color .15s, color .15s, background .15s;
+            white-space: nowrap;
+        }
+
+        .sp-tag-chip:hover {
+            border-color: var(--accent2);
+            color: var(--text);
+        }
+
+        .sp-tag-chip.active {
+            background: var(--accent2);
+            border-color: var(--accent2);
+            color: #fff;
+        }
+
+        .sp-item-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 2px 2px 0;
+        }
+
+        .sp-item-tag {
+            background: rgba(155, 93, 229, .12);
+            border: 1px solid rgba(155, 93, 229, .28);
+            color: var(--accent2);
+            font-size: 0.63rem;
+            padding: 1px 7px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background .12s;
+            user-select: none;
+        }
+
+        .sp-item-tag:hover {
+            background: rgba(155, 93, 229, .28);
+        }
+
+        .sp-tag-editor {
+            display: none;
+            padding: 5px 2px 2px;
+            gap: 5px;
+            flex-wrap: wrap;
+            align-items: center;
+            border-top: 1px dashed var(--border);
+            margin-top: 3px;
+        }
+
+        .sp-tag-editor.open {
+            display: flex;
+        }
+
+        .sp-tag-editor-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .sp-tag-input {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            outline: none;
+            width: 90px;
+            flex-shrink: 0;
+        }
+
+        .sp-tag-input:focus {
+            border-color: var(--accent2);
+        }
+
+        .sp-tag-add-btn {
+            background: var(--accent2);
+            border: none;
+            color: #fff;
+            font-size: 0.8rem;
+            padding: 3px 9px;
+            border-radius: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .sp-tag-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 0.82rem;
+            cursor: pointer;
+            padding: 4px 5px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            line-height: 1;
+            transition: color .15s;
+        }
+
+        .sp-tag-btn:hover,
+        .sp-tag-btn.has-tags {
+            color: var(--accent2);
+        }
+
+        /* ===== CARD TAG PICKER POPUP ===== */
+        #card-tag-popup {
+            position: fixed;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            z-index: 500;
+            min-width: 210px;
+            max-width: 270px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .65);
+            display: none;
+        }
+
+        #card-tag-popup.open {
+            display: block;
+        }
+
+        .ctp-title {
+            font-size: 0.76rem;
+            font-weight: 600;
+            color: var(--accent2);
+            margin-bottom: 8px;
+        }
+
+        .ctp-tags-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            min-height: 20px;
+            margin-bottom: 8px;
+        }
+
+        .ctp-tag {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.7rem;
+            padding: 3px 10px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all .12s;
+        }
+
+        .ctp-tag.selected {
+            background: var(--accent2);
+            border-color: var(--accent2);
+            color: #fff;
+        }
+
+        .ctp-new-row {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 9px;
+        }
+
+        .ctp-input {
+            flex: 1;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            font-size: 0.72rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            outline: none;
+            min-width: 0;
+        }
+
+        .ctp-input:focus {
+            border-color: var(--accent2);
+        }
+
+        .ctp-add-btn {
+            background: var(--accent2);
+            border: none;
+            color: #fff;
+            font-size: 0.75rem;
+            padding: 3px 9px;
+            border-radius: 4px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .ctp-actions {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+
+        .ctp-save-btn {
+            background: var(--accent);
+            border: none;
+            color: #fff;
+            font-size: 0.78rem;
+            padding: 5px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .ctp-skip-btn {
+            background: none;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            font-size: 0.78rem;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
         }
 
         .card-save-btn {
@@ -719,8 +956,12 @@
             </div>
         </div>
         <div class="sp-uid" id="sp-uid-display"></div>
+        <div id="sp-tag-bar"></div>
         <div id="saved-list"></div>
     </div>
+
+    <!-- CARD TAG PICKER -->
+    <div id="card-tag-popup"></div>
 
     <script>
         // ══════════════════════════════════════════════
@@ -729,8 +970,9 @@
         const BASE_URL = 'https://xamvn.bond';
         const START_ID = 47102;
         const END_ID = 634220;
-        const IMAGES_PER_PAGE = 100;        // total IDs per pagination page
-        const LAZY_BATCH = 20;         // how many images to begin loading at once
+        const IS_MOBILE = window.innerWidth <= 768;
+        const IMAGES_PER_PAGE = IS_MOBILE ? 40 : 60;    // 40 on mobile, 60 on desktop
+        const LAZY_BATCH = IS_MOBILE ? 10 : 20;
 
         // ══════════════════════════════════════════════
         // DERIVED CONSTANTS
@@ -777,10 +1019,11 @@
         // PAGE IDS
         // ══════════════════════════════════════════════
         function getPageIds(page) {
-            const start = START_ID + (page - 1) * IMAGES_PER_PAGE;
-            const end = Math.min(start + IMAGES_PER_PAGE - 1, END_ID);
+            // page 1 = newest (END_ID down), last page = oldest (START_ID)
+            const startHigh = END_ID - (page - 1) * IMAGES_PER_PAGE;
+            const endLow = Math.max(startHigh - IMAGES_PER_PAGE + 1, START_ID);
             const ids = [];
-            for (let id = start; id <= end; id++) ids.push(id);
+            for (let id = startHigh; id >= endLow; id--) ids.push(id);
             return ids;
         }
 
@@ -926,12 +1169,21 @@
             saveBtn.textContent = '🔖';
             saveBtn.addEventListener('click', e => {
                 e.stopPropagation();
-                const added = toggleSave({
-                    key: `img_${id}`, type: 'image',
-                    src: card.dataset.src, title: `Image #${id}`,
-                    id: String(id), page: currentPage
-                });
-                saveBtn.classList.toggle('saved', added);
+                const key = `img_${id}`;
+                if (isSaved(key)) {
+                    // Already saved → unsave directly
+                    setSaved(getSaved().filter(x => x.key !== key));
+                    updateSavedBadge();
+                    if (document.getElementById('saved-panel').classList.contains('open')) renderSavedPanel();
+                    saveBtn.classList.remove('saved');
+                } else {
+                    // Show tag picker to choose tags before saving
+                    openCardTagPicker(e, {
+                        key, type: 'image',
+                        src: card.dataset.src, title: `Image #${id}`,
+                        id: String(id), page: currentPage
+                    }, () => saveBtn.classList.add('saved'));
+                }
             });
 
             card.appendChild(badge);
@@ -1166,6 +1418,16 @@
         // ══════════════════════════════════════════════
         const SAVED_KEY = 'xam_saved';
         const UID_KEY = 'xam_uid';
+        const GTAGS_KEY = 'xam_tags'; // global tag list (independent of items)
+        const LAST_TAG_KEY = 'xam_last_tag'; // most recently used tag
+
+        function getLastTag() { return localStorage.getItem(LAST_TAG_KEY) || ''; }
+        function setLastTag(tag) { if (tag) localStorage.setItem(LAST_TAG_KEY, tag); }
+
+        function getGlobalTags() {
+            try { return JSON.parse(localStorage.getItem(GTAGS_KEY) || '[]'); } catch { return []; }
+        }
+        function setGlobalTags(arr) { localStorage.setItem(GTAGS_KEY, JSON.stringify(arr)); }
 
         function getBrowserId() {
             let id = localStorage.getItem(UID_KEY);
@@ -1213,18 +1475,103 @@
             document.getElementById('saved-overlay').classList.remove('open');
         }
 
-        function renderSavedPanel() {
-            const list = document.getElementById('saved-list');
+        // ── Tag helpers ──
+        let activeTagFilter = null;
+
+        function getItemTags(key) {
+            const item = getSaved().find(x => x.key === key);
+            return item ? (item.tags || []) : [];
+        }
+
+        function setItemTags(key, tags) {
             const arr = getSaved();
-            if (!arr.length) {
+            const idx = arr.findIndex(x => x.key === key);
+            if (idx !== -1) { arr[idx].tags = tags; setSaved(arr); }
+            // Sync to global tag list
+            const gTags = getGlobalTags();
+            let changed = false;
+            tags.forEach(t => { if (!gTags.includes(t)) { gTags.push(t); changed = true; } });
+            if (changed) setGlobalTags(gTags);
+        }
+
+        function getAllTags() {
+            const tags = new Set(getGlobalTags());
+            getSaved().forEach(item => (item.tags || []).forEach(t => tags.add(t)));
+            return [...tags].sort();
+        }
+
+        function renderTagBar() {
+            const bar = document.getElementById('sp-tag-bar');
+            const tags = getAllTags();
+            bar.innerHTML = '';
+
+            // Filter chips
+            if (tags.length) {
+                const allChip = document.createElement('button');
+                allChip.className = 'sp-tag-chip' + (!activeTagFilter ? ' active' : '');
+                allChip.textContent = '# All';
+                allChip.onclick = () => { activeTagFilter = null; renderSavedPanel(); };
+                bar.appendChild(allChip);
+                tags.forEach(tag => {
+                    const chip = document.createElement('button');
+                    chip.className = 'sp-tag-chip' + (activeTagFilter === tag ? ' active' : '');
+                    chip.textContent = tag;
+                    chip.onclick = () => {
+                        activeTagFilter = (activeTagFilter === tag) ? null : tag;
+                        renderSavedPanel();
+                    };
+                    bar.appendChild(chip);
+                });
+            }
+
+            // Always show: new-tag creator row
+            const newTagWrap = document.createElement('div');
+            newTagWrap.style.cssText = 'display:flex;gap:4px;align-items:center;width:100%;margin-top:' + (tags.length ? '4px' : '0');
+            const newTagInput = document.createElement('input');
+            newTagInput.className = 'sp-tag-input';
+            newTagInput.placeholder = '+ Tạo tag mới…';
+            newTagInput.style.flex = '1';
+            newTagInput.onclick = e => e.stopPropagation();
+            const doCreateTag = () => {
+                const val = newTagInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+                if (!val) return;
+                const gTags = getGlobalTags();
+                if (!gTags.includes(val)) setGlobalTags([...gTags, val]);
+                newTagInput.value = '';
+                renderSavedPanel(); // rebuilds tag bar too
+            };
+            newTagInput.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); doCreateTag(); } };
+            const newTagAddBtn = document.createElement('button');
+            newTagAddBtn.className = 'sp-tag-add-btn';
+            newTagAddBtn.textContent = '+ Tag';
+            newTagAddBtn.onclick = e => { e.stopPropagation(); doCreateTag(); };
+            newTagWrap.appendChild(newTagInput);
+            newTagWrap.appendChild(newTagAddBtn);
+            bar.appendChild(newTagWrap);
+        }
+
+        function renderSavedPanel() {
+            renderTagBar();
+            const list = document.getElementById('saved-list');
+            const all = getSaved();
+            const arr = activeTagFilter ? all.filter(item => (item.tags || []).includes(activeTagFilter)) : all;
+            if (!all.length) {
                 list.innerHTML = '<div class="sp-empty">Chưa lưu gì cả.<br><br>Bấm 🔖 trên card để lưu.</div>';
                 return;
             }
+            if (!arr.length) {
+                list.innerHTML = `<div class="sp-empty">Không có items với tag<br><b>"${activeTagFilter}"</b></div>`;
+                return;
+            }
             list.innerHTML = '';
-            arr.forEach((item, idx) => {
+            arr.forEach(item => {
                 const el = document.createElement('div');
                 el.className = 'sp-item';
-                el.onclick = () => {
+
+                // ── Main row ──
+                const main = document.createElement('div');
+                main.className = 'sp-item-main';
+                main.onclick = () => {
                     if (item.type === 'image') {
                         closeSavedPanel();
                         openSavedLightbox(item.key);
@@ -1238,18 +1585,29 @@
                     img.className = 'sp-thumb';
                     img.src = item.src;
                     img.onerror = () => img.style.opacity = '.3';
-                    el.appendChild(img);
+                    main.appendChild(img);
                 } else {
                     const icon = document.createElement('div');
                     icon.className = 'sp-thumb-icon';
                     icon.textContent = '🎬';
-                    el.appendChild(icon);
+                    main.appendChild(icon);
                 }
 
                 const info = document.createElement('div');
                 info.className = 'sp-info';
                 info.innerHTML = `<span class="sp-title">${item.title || item.key}</span><div class="sp-sub">${item.type === 'image' ? `#${item.id} · Page ${item.page}` : (item.meta || '')}</div>`;
-                el.appendChild(info);
+                main.appendChild(info);
+
+                const tagBtn = document.createElement('button');
+                tagBtn.className = 'sp-tag-btn' + ((item.tags || []).length ? ' has-tags' : '');
+                tagBtn.title = 'Tags';
+                tagBtn.textContent = '🏷';
+                tagBtn.onclick = e => {
+                    e.stopPropagation();
+                    editor.classList.toggle('open');
+                    if (editor.classList.contains('open')) tagInput.focus();
+                };
+                main.appendChild(tagBtn);
 
                 const del = document.createElement('button');
                 del.className = 'sp-del'; del.textContent = '✕'; del.title = 'Remove';
@@ -1259,9 +1617,203 @@
                     updateSavedBadge(); renderSavedPanel();
                     document.querySelectorAll(`.card-save-btn[data-key="${item.key}"]`).forEach(b => b.classList.remove('saved'));
                 };
-                el.appendChild(del);
+                main.appendChild(del);
+                el.appendChild(main);
+
+                // ── Tags display row ──
+                const tagsRow = document.createElement('div');
+                tagsRow.className = 'sp-item-tags';
+                const refreshTags = () => {
+                    tagsRow.innerHTML = '';
+                    getItemTags(item.key).forEach(tag => {
+                        const chip = document.createElement('span');
+                        chip.className = 'sp-item-tag';
+                        chip.textContent = tag;
+                        chip.title = `Filter: ${tag}`;
+                        chip.onclick = e => { e.stopPropagation(); activeTagFilter = tag; renderSavedPanel(); };
+                        tagsRow.appendChild(chip);
+                    });
+                    tagBtn.className = 'sp-tag-btn' + (getItemTags(item.key).length ? ' has-tags' : '');
+                };
+                refreshTags();
+                el.appendChild(tagsRow);
+
+                // ── Tag editor (toggle) ──
+                const editor = document.createElement('div');
+                editor.className = 'sp-tag-editor';
+
+                const editorTags = document.createElement('div');
+                editorTags.className = 'sp-tag-editor-tags';
+                const refreshEditorTags = () => {
+                    editorTags.innerHTML = '';
+                    getItemTags(item.key).forEach(tag => {
+                        const chip = document.createElement('span');
+                        chip.className = 'sp-item-tag';
+                        chip.title = 'Remove tag';
+                        chip.innerHTML = `${tag} <span style="opacity:.5">✕</span>`;
+                        chip.onclick = e => {
+                            e.stopPropagation();
+                            setItemTags(item.key, getItemTags(item.key).filter(t => t !== tag));
+                            refreshTags(); refreshEditorTags(); renderTagBar();
+                        };
+                        editorTags.appendChild(chip);
+                    });
+                };
+                refreshEditorTags();
+                editor.appendChild(editorTags);
+
+                const tagInput = document.createElement('input');
+                tagInput.className = 'sp-tag-input';
+                tagInput.placeholder = 'Tag…';
+                tagInput.onclick = e => e.stopPropagation();
+                const doAdd = () => {
+                    const val = tagInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+                    if (!val) return;
+                    const cur = getItemTags(item.key);
+                    if (!cur.includes(val)) setItemTags(item.key, [...cur, val]);
+                    tagInput.value = '';
+                    refreshTags(); refreshEditorTags(); renderTagBar();
+                };
+                tagInput.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doAdd(); } };
+                editor.appendChild(tagInput);
+
+                const addBtn = document.createElement('button');
+                addBtn.className = 'sp-tag-add-btn'; addBtn.textContent = '+ Add'; addBtn.title = 'Add tag';
+                addBtn.onclick = e => { e.stopPropagation(); doAdd(); };
+                editor.appendChild(addBtn);
+
+                el.appendChild(editor);
                 list.appendChild(el);
             });
+        }
+
+        // ── Card Tag Picker ──
+        function openCardTagPicker(event, itemData, onSaved) {
+            closeCardTagPicker();
+            const popup = document.getElementById('card-tag-popup');
+            popup.innerHTML = '';
+            // pre-select the most recently used tag
+            const _lastTag = getLastTag();
+            const selectedTags = new Set(_lastTag ? [_lastTag] : []);
+
+            const titleEl = document.createElement('div');
+            titleEl.className = 'ctp-title';
+            titleEl.textContent = `🏷 Tags cho #${itemData.id}`;
+            popup.appendChild(titleEl);
+
+            const tagsRow = document.createElement('div');
+            tagsRow.className = 'ctp-tags-row';
+            const refreshTagChips = () => {
+                tagsRow.innerHTML = '';
+                const allT = getAllTags();
+                if (!allT.length) {
+                    tagsRow.innerHTML = '<span style="font-size:0.68rem;color:var(--text-dim)">Chưa có tag nào</span>';
+                } else {
+                    allT.forEach(tag => {
+                        const chip = document.createElement('button');
+                        chip.className = 'ctp-tag' + (selectedTags.has(tag) ? ' selected' : '');
+                        chip.textContent = tag;
+                        chip.onclick = e => {
+                            e.stopPropagation();
+                            selectedTags.has(tag) ? selectedTags.delete(tag) : selectedTags.add(tag);
+                            chip.classList.toggle('selected', selectedTags.has(tag));
+                        };
+                        tagsRow.appendChild(chip);
+                    });
+                }
+            };
+            refreshTagChips();
+            popup.appendChild(tagsRow);
+
+            const newRow = document.createElement('div');
+            newRow.className = 'ctp-new-row';
+            const newInput = document.createElement('input');
+            newInput.className = 'ctp-input';
+            newInput.placeholder = 'Tạo tag mới…';
+            newInput.onclick = e => e.stopPropagation();
+            const doNewTag = () => {
+                const val = newInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+                if (!val) return;
+                const gTags = getGlobalTags();
+                if (!gTags.includes(val)) setGlobalTags([...gTags, val]);
+                selectedTags.add(val);
+                newInput.value = '';
+                refreshTagChips();
+            };
+            newInput.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); doNewTag(); } };
+            const addBtn = document.createElement('button');
+            addBtn.className = 'ctp-add-btn'; addBtn.textContent = '+ Add';
+            addBtn.onclick = e => { e.stopPropagation(); doNewTag(); };
+            newRow.appendChild(newInput); newRow.appendChild(addBtn);
+            popup.appendChild(newRow);
+
+            const actions = document.createElement('div');
+            actions.className = 'ctp-actions';
+            const skipBtn = document.createElement('button');
+            skipBtn.className = 'ctp-skip-btn'; skipBtn.textContent = 'Lưu (no tag)';
+            skipBtn.onclick = e => {
+                e.stopPropagation();
+                const arr = getSaved();
+                if (arr.findIndex(x => x.key === itemData.key) === -1) {
+                    // fall back to last used tag if nothing selected
+                    const lt = getLastTag();
+                    const tags = lt ? [lt] : [];
+                    arr.unshift({ ...itemData, savedAt: Date.now(), tags });
+                    setSaved(arr); updateSavedBadge();
+                    if (document.getElementById('saved-panel').classList.contains('open')) renderSavedPanel();
+                    onSaved && onSaved();
+                }
+                closeCardTagPicker();
+            };
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'ctp-save-btn'; saveBtn.textContent = '💾 Lưu';
+            saveBtn.onclick = e => {
+                e.stopPropagation();
+                let tags = [...selectedTags];
+                // if no tags selected, fall back to last used tag
+                if (!tags.length) { const lt = getLastTag(); if (lt) tags = [lt]; }
+                if (tags.length) setLastTag(tags[0]);
+                const arr = getSaved();
+                const idx = arr.findIndex(x => x.key === itemData.key);
+                if (idx === -1) arr.unshift({ ...itemData, savedAt: Date.now(), tags });
+                else arr[idx].tags = [...new Set([...(arr[idx].tags || []), ...tags])];
+                setSaved(arr); updateSavedBadge();
+                if (document.getElementById('saved-panel').classList.contains('open')) renderSavedPanel();
+                onSaved && onSaved();
+                closeCardTagPicker();
+            };
+            actions.appendChild(skipBtn); actions.appendChild(saveBtn);
+            popup.appendChild(actions);
+
+            // Position near click button, stay within viewport
+            popup.style.visibility = 'hidden';
+            popup.style.display = 'block';
+            const btnRect = event.currentTarget.getBoundingClientRect();
+            requestAnimationFrame(() => {
+                const pw = popup.offsetWidth, ph = popup.offsetHeight;
+                let left = btnRect.left;
+                let top = btnRect.bottom + 6;
+                if (left + pw > window.innerWidth - 8) left = window.innerWidth - pw - 8;
+                if (left < 8) left = 8;
+                if (top + ph > window.innerHeight - 8) top = btnRect.top - ph - 6;
+                if (top < 8) top = 8;
+                popup.style.left = left + 'px';
+                popup.style.top = top + 'px';
+                popup.style.visibility = '';
+                popup.classList.add('open');
+            });
+            setTimeout(() => document.addEventListener('click', closeTagPickerOnOutside), 80);
+        }
+
+        function closeCardTagPicker() {
+            const popup = document.getElementById('card-tag-popup');
+            popup.classList.remove('open');
+            popup.style.display = 'none';
+            document.removeEventListener('click', closeTagPickerOnOutside);
+        }
+
+        function closeTagPickerOnOutside(e) {
+            if (!document.getElementById('card-tag-popup').contains(e.target)) closeCardTagPicker();
         }
 
         // Init saved module

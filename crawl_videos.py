@@ -129,13 +129,35 @@ def get_mp4s_from_thread(thread_url):
 
         # grab thread title once
         if page == 1:
-            t = soup.select_one("h1.p-title-value, h1.thread-title")
-            if not t:
-                # fallback: og:title meta (more reliable on XenForo)
-                og = soup.select_one("meta[property='og:title']")
-                title = og["content"].strip() if og and og.get("content") else url
-            else:
-                title = t.get_text(strip=True)
+            title = ""
+            # 1) og:title is most reliable – format: "Forum - Thread Title | Site Name"
+            og = soup.select_one("meta[property='og:title']")
+            if og and og.get("content"):
+                raw = og["content"].strip()
+                # strip site suffix: " | Xamvn - ..." or " | XAMVN"
+                if " | " in raw:
+                    raw = raw[: raw.rfind(" | ")].strip()
+                if raw and raw.lower() not in ("xamvn", "xam vn"):
+                    title = raw
+            # 2) <title> tag fallback: "Thread Title | Site Name"
+            if not title:
+                t_tag = soup.select_one("title")
+                if t_tag:
+                    raw = t_tag.get_text(strip=True)
+                    if " | " in raw:
+                        raw = raw[: raw.rfind(" | ")].strip()
+                    if raw and raw.lower() not in ("xamvn", "xam vn"):
+                        title = raw
+            # 3) h1.p-title-value last resort (may have prefix text merged in)
+            if not title:
+                t = soup.select_one("h1.p-title-value")
+                if t:
+                    candidate = t.get_text(" ", strip=True)
+                    if candidate.lower() not in ("xamvn", "xam vn"):
+                        title = candidate
+            # 4) absolute fallback: thread URL
+            if not title:
+                title = thread_url
 
         # 1) raw html scan – catches JS blobs, meta tags, everywhere
         for u in CDN_RE.findall(raw_html):
@@ -175,18 +197,117 @@ def get_mp4s_from_thread(thread_url):
     return {"title": title, "url": thread_url, "videos": mp4s}
 
 
+def fetch_title_only(thread_url):
+    """Fetch page 1 only and return the thread title string."""
+    soup, _ = get_page(thread_url)
+    if not soup:
+        return thread_url
+    title = ""
+    og = soup.select_one("meta[property='og:title']")
+    if og and og.get("content"):
+        raw = og["content"].strip()
+        if " | " in raw:
+            raw = raw[: raw.rfind(" | ")].strip()
+        if raw and raw.lower() not in ("xamvn", "xam vn"):
+            title = raw
+    if not title:
+        t_tag = soup.select_one("title")
+        if t_tag:
+            raw = t_tag.get_text(strip=True)
+            if " | " in raw:
+                raw = raw[: raw.rfind(" | ")].strip()
+            if raw and raw.lower() not in ("xamvn", "xam vn"):
+                title = raw
+    if not title:
+        t = soup.select_one("h1.p-title-value")
+        if t:
+            candidate = t.get_text(" ", strip=True)
+            if candidate.lower() not in ("xamvn", "xam vn"):
+                title = candidate
+    return title or thread_url
+
+
 # ── MAIN ──────────────────────────────────────────────────
 def main():
+    import os, sys
+
+    resume = "--resume" in sys.argv or "-r" in sys.argv
+    fix_titles = "--fix-titles" in sys.argv
+
     print("=" * 60)
     print(f"Crawling forum: {FORUM_URL}")
-    print(f"Max threads (test mode): {MAX_THREADS}")
+    print(f"Max threads: {MAX_THREADS}")
+    if resume:
+        print("Mode: RESUME (load existing + continue)")
+    elif fix_titles:
+        print("Mode: FIX TITLES (re-fetch bad titles only)")
     print("=" * 60)
 
+    # ── load existing results if resume / fix-titles ──────
+    existing_results = []
+    existing_urls = set()
+    if (resume or fix_titles) and os.path.exists(OUTPUT):
+        with open(OUTPUT, encoding="utf-8") as f:
+            saved = json.load(f)
+        existing_results = saved.get("threads", [])
+        existing_urls = {t["url"] for t in existing_results}
+        print(f"Loaded {len(existing_results)} existing threads from {OUTPUT}")
+
+    # ── fix-titles mode: re-crawl threads with bad title ──
+    if fix_titles:
+        bad_titles = {"xamvn", "xam vn", ""}
+        to_fix = [
+            t
+            for t in existing_results
+            if t.get("title", "").strip().lower() in bad_titles
+            or t.get("title", "").strip() == t.get("url", "")
+        ]
+        print(
+            f"Found {len(to_fix)} threads with bad/missing title — re-fetching (page 1 only)…\n"
+        )
+        for i, t in enumerate(to_fix, 1):
+            print(f"  [{i}/{len(to_fix)}] {t['url']}")
+            new_title = fetch_title_only(t["url"])
+            t["title"] = new_title
+            print(f"  → title: {new_title[:70]}")
+            if i % 10 == 0:
+                total_videos = sum(len(t.get("videos", [])) for t in existing_results)
+                with open(OUTPUT, "w", encoding="utf-8") as f:
+                    json.dump(
+                        {"threads": existing_results, "total": total_videos},
+                        f,
+                        ensure_ascii=False,
+                        indent=2,
+                    )
+                print(f"  [saved] {i}/{len(to_fix)} titles fixed so far")
+            time.sleep(DELAY)
+        total_videos = sum(len(t.get("videos", [])) for t in existing_results)
+        with open(OUTPUT, "w", encoding="utf-8") as f:
+            json.dump(
+                {"threads": existing_results, "total": total_videos},
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+        print(f"\nFixed {len(to_fix)} titles → saved to {OUTPUT}")
+        return
+
+    # ── collect thread URLs ────────────────────────────────
     thread_urls = get_thread_urls(max_threads=MAX_THREADS)
     print(f"\nCollected {len(thread_urls)} threads to scan.\n")
 
-    results = []
-    total_videos = 0
+    # in resume mode: skip already-crawled URLs, keep existing results
+    if resume:
+        new_urls = [u for u in thread_urls if u not in existing_urls]
+        print(f"Skipping {len(thread_urls) - len(new_urls)} already-crawled threads.")
+        print(f"New threads to crawl: {len(new_urls)}\n")
+        thread_urls = new_urls
+        results = existing_results
+    else:
+        results = []
+
+    total_videos = sum(len(t.get("videos", [])) for t in results)
+
     for i, url in enumerate(thread_urls, 1):
         print(f"\n[{i}/{len(thread_urls)}] {url}")
         data = get_mp4s_from_thread(url)
@@ -205,7 +326,7 @@ def main():
                     ensure_ascii=False,
                     indent=2,
                 )
-            print(f"  [saved] {i} threads so far → {OUTPUT}")
+            print(f"  [saved] {len(results)} threads so far → {OUTPUT}")
 
         time.sleep(DELAY)
 
