@@ -69,6 +69,37 @@
             white-space: nowrap;
         }
 
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .nav-tab {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--text-dim);
+            background: transparent;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all .18s;
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover {
+            color: var(--text);
+            background: var(--border);
+        }
+
+        .nav-tab.active {
+            color: var(--accent);
+            background: rgba(99, 102, 241, .13);
+            border-color: var(--accent);
+        }
+
         .header-info {
             font-size: 0.8rem;
             color: var(--text-dim);
@@ -912,6 +943,10 @@
     <!-- HEADER -->
     <header>
         <a class="logo" href="?page=1">⚡ XAM Gallery</a>
+        <nav class="nav-tabs">
+            <a class="nav-tab active" href="index.html">🖼 Images</a>
+            <a class="nav-tab" href="videos.html">🎬 Videos</a>
+        </nav>
         <span class="header-info" id="range-info">Loading…</span>
         <button class="saved-tab-btn" id="saved-tab-btn">📌 Saved <span class="saved-badge"
                 id="saved-badge">0</span></button>

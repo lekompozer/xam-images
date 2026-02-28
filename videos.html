@@ -60,6 +60,37 @@
             letter-spacing: 1px;
         }
 
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+        }
+
+        .nav-tab {
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            text-decoration: none;
+            color: var(--text-dim);
+            background: transparent;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all .18s;
+            white-space: nowrap;
+        }
+
+        .nav-tab:hover {
+            color: var(--text);
+            background: var(--border);
+        }
+
+        .nav-tab.active {
+            color: var(--accent);
+            background: rgba(99, 102, 241, .13);
+            border-color: var(--accent);
+        }
+
         .header-info {
             font-size: 0.8rem;
             color: var(--text-dim);
@@ -213,18 +244,6 @@
         .video-thread-link:hover {
             background: var(--accent2);
             color: #fff;
-        }
-
-        /* error / loading state */
-        #status-msg {
-            text-align: center;
-            padding: 60px 20px;
-            color: var(--text-dim);
-            font-size: 0.9rem;
-        }
-
-        #status-msg a {
-            color: var(--accent2);
         }
 
         /* RESPONSIVE */
@@ -705,7 +724,11 @@
         <div id="loading-bar"></div>
 
         <header>
-            <a class="logo" href="?page=1">🎬 XAM Videos</a>
+            <a class="logo" href="?page=1">⚡ XAM Gallery</a>
+            <nav class="nav-tabs">
+                <a class="nav-tab" href="index.html">🖼 Images</a>
+                <a class="nav-tab active" href="videos.html">🎬 Videos</a>
+            </nav>
             <span class="header-info" id="header-info">Loading…</span>
             <button class="saved-tab-btn" id="saved-tab-btn">📌 Saved <span class="saved-badge"
                     id="saved-badge">0</span></button>
@@ -716,9 +739,7 @@
             <div class="pagination" id="pagination-top"></div>
         </div>
 
-        <main id="gallery">
-            <div id="status-msg">Loading videos.json…</div>
-        </main>
+        <main id="gallery"></main>
 
         <div class="controls" style="margin-top:0;padding:14px 20px;">
             <span></span>
@@ -750,6 +771,7 @@
             <video id="vmodal-video" controls playsinline preload="metadata"></video>
         </div>
 
+        <script src="videos-data.js"></script>
         <script>
             // ══════════════════════════════════════════════
             // CONFIG
@@ -777,30 +799,84 @@
             }
 
             // ══════════════════════════════════════════════
-            // LOAD DATA
+            // INDEXEDDB CACHE
             // ══════════════════════════════════════════════
+            const IDB_NAME = 'xam_videos';
+            const IDB_STORE = 'cache';
+            const IDB_KEY = 'videos_data';
+            const IDB_TTL = 60 * 60 * 1000; // 1 hour
+
+            function idbOpen() {
+                return new Promise((res, rej) => {
+                    const req = indexedDB.open(IDB_NAME, 1);
+                    req.onupgradeneeded = e => e.target.result.createObjectStore(IDB_STORE);
+                    req.onsuccess = e => res(e.target.result);
+                    req.onerror = () => rej(req.error);
+                });
+            }
+            async function idbGet() {
+                try {
+                    const db = await idbOpen();
+                    return new Promise(res => {
+                        const tx = db.transaction(IDB_STORE, 'readonly');
+                        const r = tx.objectStore(IDB_STORE).get(IDB_KEY);
+                        r.onsuccess = () => { db.close(); res(r.result || null); };
+                        r.onerror = () => { db.close(); res(null); };
+                    });
+                } catch { return null; }
+            }
+            async function idbSet(data) {
+                try {
+                    const db = await idbOpen();
+                    return new Promise(res => {
+                        const tx = db.transaction(IDB_STORE, 'readwrite');
+                        tx.objectStore(IDB_STORE).put(data, IDB_KEY);
+                        tx.oncomplete = () => { db.close(); res(true); };
+                        tx.onerror = () => { db.close(); res(false); };
+                    });
+                } catch { return false; }
+            }
+
+            // ══════════════════════════════════════════════
+            // LOAD DATA  (inline JS → IDB cache → fetch fallback)
+            // ══════════════════════════════════════════════
+            function flattenThreads(data) {
+                const out = [];
+                for (const t of (data.threads || [])) {
+                    for (const src of (t.videos || [])) {
+                        if (!src.startsWith('http')) continue;
+                        if (src.includes('%3A') || src.includes('[')) continue;
+                        out.push({ src, title: t.title || '', threadUrl: t.url || '' });
+                    }
+                }
+                return out;
+            }
+
             async function loadData() {
                 try {
+                    // 1) inline JS from videos-data.js (works on file://)
+                    if (window.VIDEOS_DATA) {
+                        allVideos = flattenThreads(window.VIDEOS_DATA);
+                        return true;
+                    }
+
+                    // 2) IndexedDB cache
+                    const cached = await idbGet();
+                    if (cached && cached.ts && (Date.now() - cached.ts < IDB_TTL)) {
+                        allVideos = cached.videos;
+                        return true;
+                    }
+
+                    // 3) fetch from network
                     const r = await fetch('videos.json');
                     if (!r.ok) throw new Error(`HTTP ${r.status}`);
                     const data = await r.json();
-                    // flatten threads → individual video entries
-                    allVideos = [];
-                    for (const t of (data.threads || [])) {
-                        for (const src of (t.videos || [])) {
-                            // skip malformed URLs (encoded, non-http)
-                            if (!src.startsWith('http')) continue;
-                            if (src.includes('%3A') || src.includes('[')) continue;
-                            allVideos.push({ src, title: t.title || '', threadUrl: t.url || '' });
-                        }
-                    }
+                    allVideos = flattenThreads(data);
+                    idbSet({ ts: Date.now(), videos: allVideos });
+
                     return true;
                 } catch (e) {
-                    document.getElementById('status-msg').innerHTML =
-                        `<b>Không tìm thấy videos.json</b><br><br>
-                        Chạy crawler trước:<br>
-                        <code style="background:#1a1a22;padding:4px 8px;border-radius:4px;">python crawl_videos.py</code><br><br>
-                        <small>Mở qua local server: <code>python -m http.server 8080</code></small>`;
+                    console.error('loadData failed:', e);
                     return false;
                 }
             }
