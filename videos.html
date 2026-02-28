@@ -1013,38 +1013,6 @@
             outline: none;
         }
 
-        #tiktok-info {
-            position: absolute;
-            bottom: 20px;
-            left: 16px;
-            right: 80px;
-            background: rgba(0, 0, 0, .55);
-            backdrop-filter: blur(4px);
-            border-radius: 8px;
-            padding: 8px 12px;
-            pointer-events: none;
-        }
-
-        #tiktok-title {
-            font-size: 0.82rem;
-            color: var(--text);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            margin-bottom: 4px;
-        }
-
-        #tiktok-thread-link {
-            font-size: 0.7rem;
-            color: var(--accent2);
-            text-decoration: none;
-            pointer-events: all;
-        }
-
-        #tiktok-thread-link:hover {
-            text-decoration: underline;
-        }
-
         #tiktok-nav {
             position: absolute;
             right: 16px;
@@ -1095,24 +1063,20 @@
         @keyframes ttSlideInUp {
             from {
                 transform: translateY(55px);
-                opacity: 0;
             }
 
             to {
                 transform: translateY(0);
-                opacity: 1;
             }
         }
 
         @keyframes ttSlideInDown {
             from {
                 transform: translateY(-55px);
-                opacity: 0;
             }
 
             to {
                 transform: translateY(0);
-                opacity: 1;
             }
         }
 
@@ -1234,11 +1198,8 @@
                 <button id="tiktok-close" title="Đóng (Esc)">✕</button>
             </div>
             <div id="tiktok-stage">
-                <video id="tiktok-video" controls playsinline preload="metadata"></video>
-                <div id="tiktok-info">
-                    <div id="tiktok-title"></div>
-                    <a id="tiktok-thread-link" href="#" target="_blank" rel="noopener">Thread ↗</a>
-                </div>
+                <video id="tiktok-video" playsinline preload="metadata" style="cursor:pointer"
+                    title="Tap để play/pause"></video>
                 <div id="tiktok-nav">
                     <button class="tt-nav-btn" id="tiktok-prev-btn" title="Video trước (↑)">▲</button>
                     <button class="tt-nav-btn" id="tiktok-next-btn" title="Video sau (↓)">▼</button>
@@ -2098,11 +2059,6 @@
                     setTimeout(() => stage.classList.remove(cls), 300);
                 }
 
-                document.getElementById('tiktok-title').textContent = item.title || item.threadUrl;
-                const tlink = document.getElementById('tiktok-thread-link');
-                tlink.href = item.threadUrl || '#';
-                tlink.style.display = item.threadUrl ? '' : 'none';
-
                 // Counter: Topic X/T · Vid Y/V
                 let tIdx = 0, tTotal = allThreads.length, vInT = 1, vInTTotal = 1;
                 for (let ti = 0; ti < allThreads.length; ti++) {
@@ -2111,8 +2067,25 @@
                 }
                 document.getElementById('tiktok-counter').textContent =
                     `Topic ${tIdx}/${tTotal} · ${vInT}/${vInTTotal}`;
+                // Show title in topic label line 2 (truncated)
+                const topicTitle = (item.threadTitle || 'Tất cả').slice(0, 35);
+                const vidTitle = (item.title || '').slice(0, 35);
                 document.getElementById('tiktok-topic-label').textContent =
-                    '📱 ' + (item.threadTitle || 'Tất cả').slice(0, 45);
+                    '📱 ' + topicTitle + (vidTitle && vidTitle !== topicTitle ? ' · ' + vidTitle : '');
+
+                // Thread link in header (replace old info bar)
+                let hdrLink = document.getElementById('tiktok-hdr-link');
+                if (!hdrLink) {
+                    hdrLink = document.createElement('a');
+                    hdrLink.id = 'tiktok-hdr-link';
+                    hdrLink.target = '_blank';
+                    hdrLink.rel = 'noopener';
+                    hdrLink.style.cssText = 'font-size:.7rem;color:var(--accent2);text-decoration:none;white-space:nowrap;padding:2px 7px;border:1px solid var(--accent2);border-radius:4px;flex-shrink:0';
+                    hdrLink.textContent = 'Thread ↗';
+                    document.getElementById('tiktok-header').insertBefore(hdrLink, document.getElementById('tiktok-close'));
+                }
+                hdrLink.href = item.threadUrl || '#';
+                hdrLink.style.display = item.threadUrl ? '' : 'none';
 
                 // Both buttons always enabled (infinite wrap)
                 document.getElementById('tiktok-prev-btn').disabled = false;
@@ -2156,6 +2129,10 @@
             });
 
             // Buttons
+            document.getElementById('tiktok-video').addEventListener('click', () => {
+                const v = document.getElementById('tiktok-video');
+                v.paused ? v.play().catch(() => { }) : v.pause();
+            });
             document.getElementById('tiktok-prev-btn').addEventListener('click', tikTokPrev);
             document.getElementById('tiktok-next-btn').addEventListener('click', tikTokNext);
             document.getElementById('tiktok-close').addEventListener('click', closeTikTokMode);
