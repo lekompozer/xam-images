@@ -1170,7 +1170,9 @@
                 if (!window.IS_ADMIN && tag === 'trash') return; // hide trash from public
                 const trash = getTrashSet();
                 const rawIds = window.TAGS_DATA.items[tag] || [];
-                const cnt = tag === 'trash' ? rawIds.length : rawIds.filter(id => !trash.has(id)).length;
+                const albumCnt = (window.TAGS_DATA.album_items && window.TAGS_DATA.album_items[tag])
+                    ? window.TAGS_DATA.album_items[tag].length : 0;
+                const cnt = (tag === 'trash' ? rawIds.length : rawIds.filter(id => !trash.has(id)).length) + albumCnt;
                 if (!cnt) return;
                 const chip = document.createElement('button');
                 chip.className = 'gtag-chip' + (activeGlobalTag === tag ? ' active' : '');
