@@ -1042,6 +1042,7 @@
         // ══════════════════════════════════════════════
         const ADMIN_ID = 'xam_mm4q6g9r_rih6wk2';
         const DEFAULT_TAGS = ['bikini','bj','chat-sex','doggy','gái-xinh','make-love','nude','trash'];
+        window.IS_ADMIN = true; // disables trash filtering — admin sees all images
         (function adminInit() {
             if (localStorage.getItem('xam_uid') !== ADMIN_ID) {
                 localStorage.setItem('xam_uid', ADMIN_ID);
@@ -1130,24 +1131,40 @@
         // ══════════════════════════════════════════════
         let activeGlobalTag = null; // set when a global tag chip is active
 
+        function getTrashSet() {
+            if (window.IS_ADMIN) return new Set(); // admin sees everything
+            if (!window.TAGS_DATA || !window.TAGS_DATA.items || !window.TAGS_DATA.items['trash']) return new Set();
+            return new Set(window.TAGS_DATA.items['trash']);
+        }
+
         function getTotalPages() {
             if (activeGlobalTag && window.TAGS_DATA && window.TAGS_DATA.items && window.TAGS_DATA.items[activeGlobalTag]) {
-                return Math.max(1, Math.ceil(window.TAGS_DATA.items[activeGlobalTag].length / IMAGES_PER_PAGE));
+                const trash = getTrashSet();
+                const ids = activeGlobalTag === 'trash'
+                    ? window.TAGS_DATA.items['trash']
+                    : window.TAGS_DATA.items[activeGlobalTag].filter(id => !trash.has(id));
+                return Math.max(1, Math.ceil(ids.length / IMAGES_PER_PAGE));
             }
             return TOTAL_PAGES;
         }
 
         function getPageIds(page) {
+            const trash = getTrashSet();
             if (activeGlobalTag && window.TAGS_DATA && window.TAGS_DATA.items && window.TAGS_DATA.items[activeGlobalTag]) {
-                const ids = window.TAGS_DATA.items[activeGlobalTag];
+                const allIds = activeGlobalTag === 'trash'
+                    ? window.TAGS_DATA.items['trash']
+                    : window.TAGS_DATA.items[activeGlobalTag].filter(id => !trash.has(id));
                 const start = (page - 1) * IMAGES_PER_PAGE;
-                return ids.slice(start, start + IMAGES_PER_PAGE);
+                return allIds.slice(start, start + IMAGES_PER_PAGE);
             }
             // page 1 = newest (END_ID down), last page = oldest (START_ID)
-            const startHigh = END_ID - (page - 1) * IMAGES_PER_PAGE;
-            const endLow = Math.max(startHigh - IMAGES_PER_PAGE + 1, START_ID);
+            // fill up to IMAGES_PER_PAGE non-trash IDs
             const ids = [];
-            for (let id = startHigh; id >= endLow; id--) ids.push(id);
+            let id = END_ID - (page - 1) * IMAGES_PER_PAGE;
+            while (ids.length < IMAGES_PER_PAGE && id >= START_ID) {
+                if (!trash.has(id)) ids.push(id);
+                id--;
+            }
             return ids;
         }
 
@@ -1169,7 +1186,10 @@
             bar.appendChild(allChip);
 
             window.TAGS_DATA.tags.forEach(tag => {
-                const cnt = (window.TAGS_DATA.items[tag] || []).length;
+                if (!window.IS_ADMIN && tag === 'trash') return; // hide trash from public
+                const trash = getTrashSet();
+                const rawIds = window.TAGS_DATA.items[tag] || [];
+                const cnt = tag === 'trash' ? rawIds.length : rawIds.filter(id => !trash.has(id)).length;
                 if (!cnt) return;
                 const chip = document.createElement('button');
                 chip.className = 'gtag-chip' + (activeGlobalTag === tag ? ' active' : '');

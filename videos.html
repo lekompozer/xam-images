@@ -884,6 +884,217 @@
             display: block;
         }
 
+        /* ── TIKTOK MODE ──────────────────────────────────── */
+        #tiktok-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 900;
+            flex-direction: column;
+        }
+
+        #tiktok-overlay.open {
+            display: flex;
+        }
+
+        #tiktok-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, .65);
+            backdrop-filter: blur(6px);
+            flex-shrink: 0;
+            gap: 10px;
+            z-index: 2;
+        }
+
+        #tiktok-topic-label {
+            font-size: 0.8rem;
+            color: var(--accent);
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+        }
+
+        #tiktok-counter {
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            white-space: nowrap;
+        }
+
+        #tiktok-close {
+            background: rgba(255, 255, 255, .08);
+            border: 1px solid rgba(255, 255, 255, .15);
+            color: var(--text);
+            font-size: 0.9rem;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s;
+        }
+
+        #tiktok-close:hover {
+            background: var(--accent);
+        }
+
+        #tiktok-stage {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #tiktok-video {
+            width: 100%;
+            height: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            background: #000;
+            display: block;
+            outline: none;
+        }
+
+        #tiktok-info {
+            position: absolute;
+            bottom: 20px;
+            left: 16px;
+            right: 80px;
+            background: rgba(0, 0, 0, .55);
+            backdrop-filter: blur(4px);
+            border-radius: 8px;
+            padding: 8px 12px;
+            pointer-events: none;
+        }
+
+        #tiktok-title {
+            font-size: 0.82rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        #tiktok-thread-link {
+            font-size: 0.7rem;
+            color: var(--accent2);
+            text-decoration: none;
+            pointer-events: all;
+        }
+
+        #tiktok-thread-link:hover {
+            text-decoration: underline;
+        }
+
+        #tiktok-nav {
+            position: absolute;
+            right: 16px;
+            bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .tt-nav-btn {
+            background: rgba(255, 255, 255, .1);
+            border: 1px solid rgba(255, 255, 255, .18);
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background .15s, transform .12s;
+            backdrop-filter: blur(4px);
+        }
+
+        .tt-nav-btn:hover:not(:disabled) {
+            background: rgba(224, 92, 92, .55);
+            transform: scale(1.08);
+        }
+
+        .tt-nav-btn:disabled {
+            opacity: .25;
+            cursor: not-allowed;
+        }
+
+        #tiktok-scroll-hint {
+            position: absolute;
+            bottom: 72px;
+            right: 16px;
+            font-size: 0.62rem;
+            color: rgba(255, 255, 255, .35);
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            pointer-events: none;
+            white-space: nowrap;
+        }
+
+        @keyframes ttSlideInUp {
+            from {
+                transform: translateY(55px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes ttSlideInDown {
+            from {
+                transform: translateY(-55px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .tt-slide-in-up {
+            animation: ttSlideInUp .26s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .tt-slide-in-down {
+            animation: ttSlideInDown .26s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        /* Watch-mode button on video card */
+        .card-tiktok-btn {
+            background: rgba(0, 0, 0, .55);
+            border: none;
+            color: rgba(255, 255, 255, .6);
+            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 5px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color .15s, background .15s;
+            flex-shrink: 0;
+        }
+
+        .card-tiktok-btn:hover {
+            background: var(--accent);
+            color: #fff;
+        }
+
         @media (max-width: 768px) {
             #menu-btn {
                 display: block;
@@ -965,6 +1176,27 @@
             <div class="sp-uid" id="sp-uid-display"></div>
             <div id="sp-tag-bar"></div>
             <div id="saved-list"></div>
+        </div>
+
+        <!-- TIKTOK MODE -->
+        <div id="tiktok-overlay">
+            <div id="tiktok-header">
+                <span id="tiktok-topic-label">📱 Topic</span>
+                <span id="tiktok-counter">1 / 1</span>
+                <button id="tiktok-close" title="Đóng (Esc)">✕</button>
+            </div>
+            <div id="tiktok-stage">
+                <video id="tiktok-video" controls playsinline preload="metadata"></video>
+                <div id="tiktok-info">
+                    <div id="tiktok-title"></div>
+                    <a id="tiktok-thread-link" href="#" target="_blank" rel="noopener">Thread ↗</a>
+                </div>
+                <div id="tiktok-nav">
+                    <button class="tt-nav-btn" id="tiktok-prev-btn" title="Video trước (↑)">▲</button>
+                    <button class="tt-nav-btn" id="tiktok-next-btn" title="Video sau (↓)">▼</button>
+                </div>
+                <div id="tiktok-scroll-hint">scroll ↕ để đổi</div>
+            </div>
         </div>
 
         <!-- VIDEO MODAL -->
@@ -1218,6 +1450,19 @@
                 link.textContent = 'Thread ↗';
 
                 hdr.appendChild(ttl);
+
+                const watchBtn = document.createElement('button');
+                watchBtn.className = 'card-tiktok-btn';
+                watchBtn.title = 'Xem TikTok mode (scroll lên/xuống)';
+                watchBtn.textContent = '📱';
+                watchBtn.addEventListener('click', e => {
+                    e.stopPropagation();
+                    const sourceList = activeThread ? activeThread.videos : pageItems;
+                    const idx = sourceList.findIndex(v => v.src === src);
+                    openTikTokMode(sourceList, idx >= 0 ? idx : 0);
+                });
+                hdr.appendChild(watchBtn);
+
                 hdr.appendChild(link);
                 card.appendChild(hdr);
 
@@ -1658,7 +1903,111 @@
 
             document.getElementById('vmodal-close').addEventListener('click', closeVideoModal);
             document.getElementById('vmodal-overlay').addEventListener('click', closeVideoModal);
-            document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeVideoModal(); closeSidebar(); } });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape') { closeVideoModal(); closeSidebar(); closeTikTokMode(); }
+                if (document.getElementById('tiktok-overlay').classList.contains('open')) {
+                    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') { e.preventDefault(); tikTokNext(); }
+                    if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') { e.preventDefault(); tikTokPrev(); }
+                }
+            });
+
+            // ══════════════════════════════════════════════
+            // TIKTOK MODE
+            // ══════════════════════════════════════════════
+            let tikTokList = [];
+            let tikTokIndex = 0;
+            let ttWheelLock = false;
+            let ttTouchStartY = 0;
+
+            function openTikTokMode(list, index) {
+                tikTokList = list;
+                tikTokIndex = Math.max(0, Math.min(index, list.length - 1));
+                ttRender(null);
+                document.getElementById('tiktok-overlay').classList.add('open');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeTikTokMode() {
+                if (!document.getElementById('tiktok-overlay').classList.contains('open')) return;
+                const vid = document.getElementById('tiktok-video');
+                vid.pause();
+                vid.src = '';
+                document.getElementById('tiktok-overlay').classList.remove('open');
+                document.body.style.overflow = '';
+            }
+
+            function ttRender(direction) {
+                const item = tikTokList[tikTokIndex];
+                if (!item) return;
+
+                const vid = document.getElementById('tiktok-video');
+                const stage = document.getElementById('tiktok-stage');
+
+                // Swap source
+                vid.pause();
+                vid.src = item.src;
+                vid.load();
+                vid.play().catch(() => { });
+
+                // Slide animation
+                if (direction) {
+                    const cls = direction === 'next' ? 'tt-slide-in-up' : 'tt-slide-in-down';
+                    stage.classList.remove('tt-slide-in-up', 'tt-slide-in-down');
+                    // force reflow
+                    void stage.offsetWidth;
+                    stage.classList.add(cls);
+                    setTimeout(() => stage.classList.remove(cls), 300);
+                }
+
+                document.getElementById('tiktok-title').textContent = item.title || item.threadUrl;
+                const tlink = document.getElementById('tiktok-thread-link');
+                tlink.href = item.threadUrl || '#';
+                tlink.style.display = item.threadUrl ? '' : 'none';
+
+                document.getElementById('tiktok-counter').textContent =
+                    `${tikTokIndex + 1} / ${tikTokList.length}`;
+
+                const topicLabel = activeThread ? activeThread.title : 'Tất cả';
+                document.getElementById('tiktok-topic-label').textContent = '📱 ' + topicLabel.slice(0, 45);
+
+                document.getElementById('tiktok-prev-btn').disabled = tikTokIndex === 0;
+                document.getElementById('tiktok-next-btn').disabled = tikTokIndex === tikTokList.length - 1;
+            }
+
+            function tikTokNext() {
+                if (tikTokIndex < tikTokList.length - 1) { tikTokIndex++; ttRender('next'); }
+            }
+
+            function tikTokPrev() {
+                if (tikTokIndex > 0) { tikTokIndex--; ttRender('prev'); }
+            }
+
+            // Wheel scroll
+            document.getElementById('tiktok-overlay').addEventListener('wheel', e => {
+                e.preventDefault();
+                if (ttWheelLock) return;
+                if (e.deltaY > 20) tikTokNext();
+                else if (e.deltaY < -20) tikTokPrev();
+                ttWheelLock = true;
+                setTimeout(() => ttWheelLock = false, 550);
+            }, { passive: false });
+
+            // Touch swipe
+            document.getElementById('tiktok-stage').addEventListener('touchstart', e => {
+                ttTouchStartY = e.touches[0].clientY;
+            }, { passive: true });
+
+            document.getElementById('tiktok-stage').addEventListener('touchend', e => {
+                const dy = ttTouchStartY - e.changedTouches[0].clientY;
+                if (Math.abs(dy) > 45) {
+                    if (dy > 0) tikTokNext(); else tikTokPrev();
+                }
+            });
+
+            // Buttons
+            document.getElementById('tiktok-prev-btn').addEventListener('click', tikTokPrev);
+            document.getElementById('tiktok-next-btn').addEventListener('click', tikTokNext);
+            document.getElementById('tiktok-close').addEventListener('click', closeTikTokMode);
 
             // Sidebar events
             document.getElementById('menu-btn').addEventListener('click', openSidebar);

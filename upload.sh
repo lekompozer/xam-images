@@ -15,7 +15,17 @@ FILES=(
     "videos.html"
     "videos.json"
     "videos-data.js"
+    "tags-data.js"
 )
+
+# Auto-copy tags-data.js from Downloads if newer than local copy
+TAGS_DOWNLOAD="$HOME/Downloads/tags-data.js"
+if [ -f "$TAGS_DOWNLOAD" ]; then
+    if [ ! -f "tags-data.js" ] || [ "$TAGS_DOWNLOAD" -nt "tags-data.js" ]; then
+        cp "$TAGS_DOWNLOAD" tags-data.js
+        echo "📋 Copied tags-data.js from Downloads"
+    fi
+fi
 
 ok=0; fail=0
 for f in "${FILES[@]}"; do
