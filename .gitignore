@@ -3,3 +3,4 @@ inspect_thread.py
 test_crawl.py
 __pycache__/
 *.pyc
+_gen_admin.py
