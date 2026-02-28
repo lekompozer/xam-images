@@ -213,6 +213,54 @@
             outline: none;
         }
 
+        /* mobile tap-to-load placeholder */
+        .video-placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #0c0c10;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .video-placeholder::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, rgba(224, 92, 92, .08) 0%, transparent 70%);
+        }
+
+        .video-placeholder .vp-icon {
+            width: 56px;
+            height: 56px;
+            background: rgba(224, 92, 92, .85);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 20px rgba(224, 92, 92, .4);
+            transition: transform .15s, background .15s;
+            z-index: 1;
+        }
+
+        .video-placeholder:hover .vp-icon,
+        .video-placeholder:active .vp-icon {
+            transform: scale(1.12);
+            background: var(--accent);
+        }
+
+        .video-placeholder .vp-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            z-index: 1;
+        }
+
         .video-card-header {
             padding: 10px 14px;
             display: flex;
@@ -1214,6 +1262,7 @@
             // ══════════════════════════════════════════════
             // CONFIG
             // ══════════════════════════════════════════════
+            const IS_MOBILE = window.innerWidth <= 768 || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
             const VIDEOS_PER_PAGE = 10;   // flat video cards per page
             const LAZY_BATCH = 10;        // cards revealed per scroll batch
 
@@ -1469,12 +1518,51 @@
                 const vid = document.createElement('video');
                 vid.controls = true;
                 vid.preload = 'metadata';
+                vid.playsinline = true;
+                vid.setAttribute('playsinline', '');
+                vid.setAttribute('webkit-playsinline', '');
                 vid.setAttribute('controlslist', 'nodownload');
                 vid.addEventListener('contextmenu', e => e.preventDefault());
                 vid.src = src;
 
                 // dead link → remove card silently
                 vid.addEventListener('error', () => card.remove());
+
+                // On desktop: auto-capture poster via canvas after seek
+                if (!IS_MOBILE) {
+                    vid.addEventListener('loadedmetadata', () => {
+                        vid.currentTime = 0.01;
+                    }, { once: true });
+                    vid.addEventListener('seeked', () => {
+                        try {
+                            const c = document.createElement('canvas');
+                            c.width = vid.videoWidth || 320;
+                            c.height = vid.videoHeight || 180;
+                            c.getContext('2d').drawImage(vid, 0, 0, c.width, c.height);
+                            vid.poster = c.toDataURL('image/jpeg', 0.75);
+                        } catch (e) { }
+                    }, { once: true });
+                }
+
+                // On mobile: replace with tap-to-load placeholder (browsers block preload)
+                let videoEl = vid;
+                if (IS_MOBILE) {
+                    const ph = document.createElement('div');
+                    ph.className = 'video-placeholder';
+                    const icon = document.createElement('div');
+                    icon.className = 'vp-icon';
+                    icon.textContent = '▶️';
+                    const lbl = document.createElement('div');
+                    lbl.className = 'vp-label';
+                    lbl.textContent = 'Tap to play';
+                    ph.appendChild(icon);
+                    ph.appendChild(lbl);
+                    ph.addEventListener('click', () => {
+                        ph.replaceWith(vid);
+                        vid.play().catch(() => { });
+                    });
+                    videoEl = ph;
+                }
 
                 // Save button
                 const saveKey = 'vid_' + src.replace(/[^a-z0-9]/gi, '').slice(-20);
@@ -1508,7 +1596,7 @@
                     }
                 });
 
-                card.appendChild(vid);
+                card.appendChild(videoEl);
                 card.appendChild(saveBtn);
                 return card;
             }
@@ -1912,16 +2000,37 @@
             });
 
             // ══════════════════════════════════════════════
-            // TIKTOK MODE
+            // TIKTOK MODE  (infinite scroll across topics)
             // ══════════════════════════════════════════════
-            let tikTokList = [];
-            let tikTokIndex = 0;
+            let tikTokGlobalList = []; // flat list across ALL threads
+            let tikTokGlobalIdx = 0;
             let ttWheelLock = false;
             let ttTouchStartY = 0;
 
-            function openTikTokMode(list, index) {
-                tikTokList = list;
-                tikTokIndex = Math.max(0, Math.min(index, list.length - 1));
+            /** Rebuild flat global list from allThreads (call after data changes). */
+            function buildTikTokGlobal() {
+                tikTokGlobalList = [];
+                for (const thread of allThreads) {
+                    for (const vid of thread.videos) {
+                        tikTokGlobalList.push({
+                            src: vid.src, title: vid.title,
+                            threadUrl: vid.threadUrl, threadTitle: thread.title
+                        });
+                    }
+                }
+            }
+
+            /** Open TikTok mode starting at the clicked item. */
+            function openTikTokMode(list, localIndex) {
+                buildTikTokGlobal();
+                if (!tikTokGlobalList.length) return;
+                const item = list[localIndex];
+                if (item) {
+                    const g = tikTokGlobalList.findIndex(v => v.src === item.src);
+                    tikTokGlobalIdx = g >= 0 ? g : 0;
+                } else {
+                    tikTokGlobalIdx = 0;
+                }
                 ttRender(null);
                 document.getElementById('tiktok-overlay').classList.add('open');
                 document.body.style.overflow = 'hidden';
@@ -1930,30 +2039,60 @@
             function closeTikTokMode() {
                 if (!document.getElementById('tiktok-overlay').classList.contains('open')) return;
                 const vid = document.getElementById('tiktok-video');
+                vid.onerror = null;
                 vid.pause();
                 vid.src = '';
                 document.getElementById('tiktok-overlay').classList.remove('open');
                 document.body.style.overflow = '';
             }
 
+            /** Remove a dead src from allVideos + allThreads, prune empty topics, rebuild global list. */
+            function ttRemoveDead(src) {
+                // allVideos
+                const ai = allVideos.findIndex(v => v.src === src);
+                if (ai !== -1) allVideos.splice(ai, 1);
+                // allThreads — remove vid, then remove empty thread
+                for (let ti = allThreads.length - 1; ti >= 0; ti--) {
+                    allThreads[ti].videos = allThreads[ti].videos.filter(v => v.src !== src);
+                    if (allThreads[ti].videos.length === 0) allThreads.splice(ti, 1);
+                }
+                // Rebuild global + clamp index
+                buildTikTokGlobal();
+                if (tikTokGlobalIdx >= tikTokGlobalList.length)
+                    tikTokGlobalIdx = Math.max(0, tikTokGlobalList.length - 1);
+                // Refresh sidebar to reflect pruned topics
+                renderTopicsSidebar(document.getElementById('topics-search-input').value);
+                // If activeThread was deleted, reset to "all"
+                if (activeThread && !allThreads.includes(activeThread)) activeThread = null;
+            }
+
             function ttRender(direction) {
-                const item = tikTokList[tikTokIndex];
+                if (!tikTokGlobalList.length) { closeTikTokMode(); return; }
+                const item = tikTokGlobalList[tikTokGlobalIdx];
                 if (!item) return;
 
                 const vid = document.getElementById('tiktok-video');
                 const stage = document.getElementById('tiktok-stage');
 
-                // Swap source
+                // Clear old error handler before setting new src
+                vid.onerror = null;
                 vid.pause();
                 vid.src = item.src;
                 vid.load();
                 vid.play().catch(() => { });
 
+                // On error: remove dead video + skip forward
+                vid.onerror = () => {
+                    const deadSrc = item.src;
+                    ttRemoveDead(deadSrc);
+                    if (!tikTokGlobalList.length) { closeTikTokMode(); return; }
+                    ttRender('next');
+                };
+
                 // Slide animation
                 if (direction) {
                     const cls = direction === 'next' ? 'tt-slide-in-up' : 'tt-slide-in-down';
                     stage.classList.remove('tt-slide-in-up', 'tt-slide-in-down');
-                    // force reflow
                     void stage.offsetWidth;
                     stage.classList.add(cls);
                     setTimeout(() => stage.classList.remove(cls), 300);
@@ -1964,22 +2103,34 @@
                 tlink.href = item.threadUrl || '#';
                 tlink.style.display = item.threadUrl ? '' : 'none';
 
+                // Counter: Topic X/T · Vid Y/V
+                let tIdx = 0, tTotal = allThreads.length, vInT = 1, vInTTotal = 1;
+                for (let ti = 0; ti < allThreads.length; ti++) {
+                    const vi = allThreads[ti].videos.findIndex(v => v.src === item.src);
+                    if (vi !== -1) { tIdx = ti + 1; vInT = vi + 1; vInTTotal = allThreads[ti].videos.length; break; }
+                }
                 document.getElementById('tiktok-counter').textContent =
-                    `${tikTokIndex + 1} / ${tikTokList.length}`;
+                    `Topic ${tIdx}/${tTotal} · ${vInT}/${vInTTotal}`;
+                document.getElementById('tiktok-topic-label').textContent =
+                    '📱 ' + (item.threadTitle || 'Tất cả').slice(0, 45);
 
-                const topicLabel = activeThread ? activeThread.title : 'Tất cả';
-                document.getElementById('tiktok-topic-label').textContent = '📱 ' + topicLabel.slice(0, 45);
-
-                document.getElementById('tiktok-prev-btn').disabled = tikTokIndex === 0;
-                document.getElementById('tiktok-next-btn').disabled = tikTokIndex === tikTokList.length - 1;
+                // Both buttons always enabled (infinite wrap)
+                document.getElementById('tiktok-prev-btn').disabled = false;
+                document.getElementById('tiktok-next-btn').disabled = false;
             }
 
+            /** Advance forward — wraps to beginning for infinite scroll */
             function tikTokNext() {
-                if (tikTokIndex < tikTokList.length - 1) { tikTokIndex++; ttRender('next'); }
+                if (!tikTokGlobalList.length) return;
+                tikTokGlobalIdx = (tikTokGlobalIdx + 1) % tikTokGlobalList.length;
+                ttRender('next');
             }
 
+            /** Go backward — wraps to end */
             function tikTokPrev() {
-                if (tikTokIndex > 0) { tikTokIndex--; ttRender('prev'); }
+                if (!tikTokGlobalList.length) return;
+                tikTokGlobalIdx = (tikTokGlobalIdx - 1 + tikTokGlobalList.length) % tikTokGlobalList.length;
+                ttRender('prev');
             }
 
             // Wheel scroll
