@@ -33,7 +33,7 @@
         }
 
         .wrapper {
-            max-width: 800px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
@@ -716,14 +716,192 @@
                 gap: 16px;
             }
         }
+
+        /* ── TOPICS SIDEBAR ─────────────────────────────────── */
+        .page-layout {
+            display: flex;
+            align-items: flex-start;
+            min-height: calc(100vh - 60px);
+        }
+
+        .topics-sidebar {
+            width: 260px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            height: calc(100vh - 60px);
+            position: sticky;
+            top: 60px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topics-sidebar::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .topics-sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .topics-sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        .topics-search {
+            padding: 10px 12px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        .topics-search input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text);
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            outline: none;
+        }
+
+        .topics-search input:focus {
+            border-color: var(--accent);
+        }
+
+        .topics-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 4px 0;
+        }
+
+        .topic-item {
+            padding: 8px 14px;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            line-height: 1.35;
+            transition: background .12s, color .12s;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 6px;
+        }
+
+        .topic-item:hover {
+            background: rgba(255, 255, 255, .04);
+            color: var(--text);
+        }
+
+        .topic-item.active {
+            background: rgba(224, 92, 92, .1);
+            border-left-color: var(--accent);
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        .topic-item .topic-name {
+            flex: 1;
+        }
+
+        .topic-item .topic-count {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            background: var(--border);
+            border-radius: 10px;
+            padding: 1px 6px;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .topic-all {
+            padding: 8px 14px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
+            transition: background .12s, color .12s;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .topic-all:hover {
+            background: rgba(255, 255, 255, .04);
+            color: var(--text);
+        }
+
+        .topic-all.active {
+            border-left-color: var(--accent2);
+            color: var(--accent2);
+        }
+
+        .main-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* mobile */
+        #menu-btn {
+            display: none;
+            background: none;
+            border: none;
+            color: var(--text);
+            font-size: 1.3rem;
+            cursor: pointer;
+            padding: 4px 6px;
+            line-height: 1;
+        }
+
+        #sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .55);
+            z-index: 200;
+        }
+
+        #sidebar-overlay.open {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            #menu-btn {
+                display: block;
+            }
+
+            .topics-sidebar {
+                position: fixed;
+                left: -270px;
+                top: 0;
+                height: 100vh;
+                z-index: 201;
+                transition: left .25s ease;
+                width: 270px;
+            }
+
+            .topics-sidebar.open {
+                left: 0;
+            }
+        }
     </style>
 </head>
 
 <body>
+    <div id="sidebar-overlay"></div>
     <div class="wrapper">
         <div id="loading-bar"></div>
 
         <header>
+            <button id="menu-btn" title="Topics menu">☰</button>
             <a class="logo" href="?page=1">⚡ XAM Gallery</a>
             <nav class="nav-tabs">
                 <a class="nav-tab" href="index.html">🖼 Images</a>
@@ -734,16 +912,33 @@
                     id="saved-badge">0</span></button>
         </header>
 
-        <div class="controls" id="controls-top">
-            <span class="page-info">Page <span id="cur-page-lbl">-</span> / <span id="total-pages-lbl">-</span></span>
-            <div class="pagination" id="pagination-top"></div>
-        </div>
+        <div class="page-layout">
+            <!-- TOPICS SIDEBAR -->
+            <aside class="topics-sidebar" id="topics-sidebar">
+                <div class="topics-search">
+                    <input type="text" id="topics-search-input" placeholder="🔍 Tìm topic…" />
+                </div>
+                <div class="topic-all active" id="topic-all-btn">
+                    <span>🎬 Tất cả</span><span class="topic-count" id="total-count">0</span>
+                </div>
+                <div class="topics-list" id="topics-list"></div>
+            </aside>
 
-        <main id="gallery"></main>
+            <!-- MAIN CONTENT -->
+            <div class="main-content">
+                <div class="controls" id="controls-top">
+                    <span class="page-info">Page <span id="cur-page-lbl">-</span> / <span
+                            id="total-pages-lbl">-</span></span>
+                    <div class="pagination" id="pagination-top"></div>
+                </div>
 
-        <div class="controls" style="margin-top:0;padding:14px 20px;">
-            <span></span>
-            <div class="pagination" id="pagination-bottom"></div>
+                <main id="gallery"></main>
+
+                <div class="controls" style="margin-top:0;padding:14px 20px;">
+                    <span></span>
+                    <div class="pagination" id="pagination-bottom"></div>
+                </div>
+            </div>
         </div>
 
         <!-- SAVED PANEL -->
@@ -782,7 +977,9 @@
             // ══════════════════════════════════════════════
             // STATE
             // ══════════════════════════════════════════════
-            let allVideos = [];    // flat array: [{src, title, threadUrl}]
+            let allVideos = [];     // flat: [{src, title, threadUrl}]
+            let allThreads = [];    // grouped: [{title, url, videos:[{src,title,threadUrl}]}]
+            let activeThread = null; // null = show all
             let pageItems = [];    // slice for current page
             let batchOffset = 0;
             let currentPage = 1;
@@ -841,13 +1038,18 @@
             // LOAD DATA  (inline JS → IDB cache → fetch fallback)
             // ══════════════════════════════════════════════
             function flattenThreads(data) {
+                allThreads = [];
                 const out = [];
                 for (const t of (data.threads || [])) {
+                    const tvids = [];
                     for (const src of (t.videos || [])) {
                         if (!src.startsWith('http')) continue;
                         if (src.includes('%3A') || src.includes('[')) continue;
-                        out.push({ src, title: t.title || '', threadUrl: t.url || '' });
+                        const item = { src, title: t.title || '', threadUrl: t.url || '' };
+                        out.push(item);
+                        tvids.push(item);
                     }
+                    if (tvids.length) allThreads.push({ title: t.title || t.url || '', url: t.url || '', videos: tvids });
                 }
                 return out;
             }
@@ -860,10 +1062,10 @@
                         return true;
                     }
 
-                    // 2) IndexedDB cache
+                    // 2) IndexedDB cache (stores raw data for thread grouping)
                     const cached = await idbGet();
-                    if (cached && cached.ts && (Date.now() - cached.ts < IDB_TTL)) {
-                        allVideos = cached.videos;
+                    if (cached && cached.ts && (Date.now() - cached.ts < IDB_TTL) && cached.data) {
+                        allVideos = flattenThreads(cached.data);
                         return true;
                     }
 
@@ -872,7 +1074,7 @@
                     if (!r.ok) throw new Error(`HTTP ${r.status}`);
                     const data = await r.json();
                     allVideos = flattenThreads(data);
-                    idbSet({ ts: Date.now(), videos: allVideos });
+                    idbSet({ ts: Date.now(), data });
 
                     return true;
                 } catch (e) {
@@ -932,9 +1134,55 @@
             }
 
             function goTo(page) {
-                const url = new URL(location.href);
-                url.searchParams.set('page', page);
-                location.href = url.toString();
+                currentPage = Math.max(1, Math.min(page, totalPages || 1));
+                renderPage();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            // ══════════════════════════════════════════════
+            // TOPICS SIDEBAR
+            // ══════════════════════════════════════════════
+            function renderTopicsSidebar(filter = '') {
+                const list = document.getElementById('topics-list');
+                list.innerHTML = '';
+                const q = filter.toLowerCase();
+                const visible = allThreads.filter(t => !q || t.title.toLowerCase().includes(q));
+                visible.forEach(thread => {
+                    const item = document.createElement('div');
+                    item.className = 'topic-item' + (activeThread === thread ? ' active' : '');
+                    const name = document.createElement('span');
+                    name.className = 'topic-name';
+                    name.textContent = thread.title;
+                    const cnt = document.createElement('span');
+                    cnt.className = 'topic-count';
+                    cnt.textContent = thread.videos.length;
+                    item.appendChild(name);
+                    item.appendChild(cnt);
+                    item.onclick = () => selectTopic(thread);
+                    list.appendChild(item);
+                });
+                document.getElementById('total-count').textContent = allVideos.length;
+                const allBtn = document.getElementById('topic-all-btn');
+                allBtn.classList.toggle('active', !activeThread);
+            }
+
+            function selectTopic(thread) {
+                activeThread = thread;
+                currentPage = 1;
+                renderTopicsSidebar(document.getElementById('topics-search-input').value);
+                renderPage();
+                // close on mobile
+                closeSidebar();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+
+            function openSidebar() {
+                document.getElementById('topics-sidebar').classList.add('open');
+                document.getElementById('sidebar-overlay').classList.add('open');
+            }
+            function closeSidebar() {
+                document.getElementById('topics-sidebar').classList.remove('open');
+                document.getElementById('sidebar-overlay').classList.remove('open');
             }
 
             // ══════════════════════════════════════════════
@@ -1065,17 +1313,19 @@
             // RENDER PAGE
             // ══════════════════════════════════════════════
             function renderPage() {
-                totalPages = Math.ceil(allVideos.length / VIDEOS_PER_PAGE);
-                currentPage = Math.max(1, Math.min(getPage(), totalPages || 1));
+                const source = activeThread ? activeThread.videos : allVideos;
+                totalPages = Math.max(1, Math.ceil(source.length / VIDEOS_PER_PAGE));
+                currentPage = Math.max(1, Math.min(currentPage, totalPages));
 
                 const start = (currentPage - 1) * VIDEOS_PER_PAGE;
-                pageItems = allVideos.slice(start, start + VIDEOS_PER_PAGE);
+                pageItems = source.slice(start, start + VIDEOS_PER_PAGE);
                 batchOffset = 0;
 
                 document.getElementById('cur-page-lbl').textContent = currentPage;
                 document.getElementById('total-pages-lbl').textContent = totalPages;
-                document.getElementById('header-info').textContent =
-                    `${allVideos.length} videos · ${totalPages} pages`;
+                document.getElementById('header-info').textContent = activeThread
+                    ? `${activeThread.videos.length} videos · ${activeThread.title.slice(0, 40)}`
+                    : `${allVideos.length} videos · ${allThreads.length} topics`;
 
                 renderPagination('pagination-top');
                 renderPagination('pagination-bottom');
@@ -1085,15 +1335,14 @@
                 setLoadingBar(10);
 
                 loadNextBatch();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
             }
 
             // ══════════════════════════════════════════════
             // SAVED MODULE
             // ══════════════════════════════════════════════
-            const SAVED_KEY = 'xam_saved';
-            const UID_KEY = 'xam_uid';
-            const GTAGS_KEY = 'xam_tags'; // global tag list
+            const SAVED_KEY = 'xam_vsaved';   // separate from images saved list
+            const UID_KEY = 'xam_uid';         // shared browser ID
+            const GTAGS_KEY = 'xam_vtags';     // separate from images tag list
 
             function getGlobalTags() {
                 try { return JSON.parse(localStorage.getItem(GTAGS_KEY) || '[]'); } catch { return []; }
@@ -1398,7 +1647,22 @@
 
             document.getElementById('vmodal-close').addEventListener('click', closeVideoModal);
             document.getElementById('vmodal-overlay').addEventListener('click', closeVideoModal);
-            document.addEventListener('keydown', e => { if (e.key === 'Escape') closeVideoModal(); });
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeVideoModal(); closeSidebar(); } });
+
+            // Sidebar events
+            document.getElementById('menu-btn').addEventListener('click', openSidebar);
+            document.getElementById('sidebar-overlay').addEventListener('click', closeSidebar);
+            document.getElementById('topic-all-btn').addEventListener('click', () => {
+                activeThread = null;
+                currentPage = 1;
+                renderTopicsSidebar(document.getElementById('topics-search-input').value);
+                renderPage();
+                closeSidebar();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            });
+            document.getElementById('topics-search-input').addEventListener('input', e => {
+                renderTopicsSidebar(e.target.value);
+            });
 
             // ══════════════════════════════════════════════
             // BOOT
@@ -1406,7 +1670,10 @@
             (async () => {
                 setLoadingBar(10);
                 const ok = await loadData();
-                if (ok) renderPage();
+                if (ok) {
+                    renderTopicsSidebar();
+                    renderPage();
+                }
             })();
         </script>
     </div><!-- /.wrapper -->
