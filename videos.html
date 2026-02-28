@@ -737,17 +737,28 @@
             flex-direction: column;
         }
 
-        .topics-sidebar::-webkit-scrollbar {
+        /* ── GLOBAL SCROLLBAR ────────────────────────────────── */
+        ::-webkit-scrollbar {
             width: 4px;
+            height: 4px;
         }
 
-        .topics-sidebar::-webkit-scrollbar-track {
-            background: transparent;
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
         }
 
-        .topics-sidebar::-webkit-scrollbar-thumb {
-            background: var(--border);
+        ::-webkit-scrollbar-thumb {
+            background: #3a3a50;
             border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #52526e;
+        }
+
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: #3a3a50 var(--bg);
         }
 
         .topics-search {
@@ -1161,7 +1172,7 @@
                     item.onclick = () => selectTopic(thread);
                     list.appendChild(item);
                 });
-                document.getElementById('total-count').textContent = allVideos.length;
+                document.getElementById('total-count').textContent = allThreads.length;
                 const allBtn = document.getElementById('topic-all-btn');
                 allBtn.classList.toggle('active', !activeThread);
             }
