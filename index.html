@@ -1104,38 +1104,31 @@
 
         function getTotalPages() {
             if (activeGlobalTag && window.TAGS_DATA) {
-                // Album items (CDN URL list, e.g. from anh.moe)
-                if (window.TAGS_DATA.album_items && window.TAGS_DATA.album_items[activeGlobalTag]) {
-                    return Math.max(1, Math.ceil(window.TAGS_DATA.album_items[activeGlobalTag].length / IMAGES_PER_PAGE));
-                }
-                // Regular integer ID items
-                if (window.TAGS_DATA.items && window.TAGS_DATA.items[activeGlobalTag]) {
-                    const trash = getTrashSet();
-                    const ids = activeGlobalTag === 'trash'
-                        ? window.TAGS_DATA.items['trash']
-                        : window.TAGS_DATA.items[activeGlobalTag].filter(id => !trash.has(id));
-                    return Math.max(1, Math.ceil(ids.length / IMAGES_PER_PAGE));
-                }
+                const combined = getTagCombinedIds(activeGlobalTag);
+                if (combined.length) return Math.max(1, Math.ceil(combined.length / IMAGES_PER_PAGE));
             }
             return TOTAL_PAGES;
+        }
+
+        // Returns merged [integerIds..., albumUrls...] for a tag, respecting trash
+        function getTagCombinedIds(tag) {
+            const trash = getTrashSet();
+            const intIds = (window.TAGS_DATA.items && window.TAGS_DATA.items[tag])
+                ? (tag === 'trash' ? window.TAGS_DATA.items[tag] : window.TAGS_DATA.items[tag].filter(id => !trash.has(id)))
+                : [];
+            const albumUrls = (window.TAGS_DATA.album_items && window.TAGS_DATA.album_items[tag])
+                ? window.TAGS_DATA.album_items[tag]
+                : [];
+            return [...intIds, ...albumUrls];
         }
 
         function getPageIds(page) {
             const trash = getTrashSet();
             if (activeGlobalTag && window.TAGS_DATA) {
-                // Album items (CDN URL list)
-                if (window.TAGS_DATA.album_items && window.TAGS_DATA.album_items[activeGlobalTag]) {
-                    const allUrls = window.TAGS_DATA.album_items[activeGlobalTag];
+                const combined = getTagCombinedIds(activeGlobalTag);
+                if (combined.length) {
                     const start = (page - 1) * IMAGES_PER_PAGE;
-                    return allUrls.slice(start, start + IMAGES_PER_PAGE);
-                }
-                // Regular integer ID items
-                if (window.TAGS_DATA.items && window.TAGS_DATA.items[activeGlobalTag]) {
-                    const allIds = activeGlobalTag === 'trash'
-                        ? window.TAGS_DATA.items['trash']
-                        : window.TAGS_DATA.items[activeGlobalTag].filter(id => !trash.has(id));
-                    const start = (page - 1) * IMAGES_PER_PAGE;
-                    return allIds.slice(start, start + IMAGES_PER_PAGE);
+                    return combined.slice(start, start + IMAGES_PER_PAGE);
                 }
             }
             // page 1 = newest (END_ID down), last page = oldest (START_ID)

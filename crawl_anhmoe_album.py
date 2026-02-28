@@ -151,10 +151,16 @@ def update_tags_data(tag: str, new_ids: list, tags_file="tags-data.js"):
 
     data = json.loads(m.group(1))
 
-    # Add/update album_items
+    # Append to existing album_items (deduplicate, preserve order)
     if "album_items" not in data:
         data["album_items"] = {}
-    data["album_items"][tag] = new_ids
+    existing = data["album_items"].get(tag, [])
+    existing_set = set(existing)
+    appended = [u for u in new_ids if u not in existing_set]
+    data["album_items"][tag] = existing + appended
+    print(
+        f"  (existing: {len(existing)}, new: {len(appended)}, total: {len(data['album_items'][tag])})"
+    )
 
     # Rewrite file
     new_json = json.dumps(data, ensure_ascii=False, indent=2)
@@ -165,7 +171,7 @@ def update_tags_data(tag: str, new_ids: list, tags_file="tags-data.js"):
         f.write(new_content)
 
     print(
-        f"\n[tags-data.js] Updated album_items['{tag}'] with {len(new_ids)} URLs → {tags_file}"
+        f"\n[tags-data.js] Updated album_items['{tag}'] (+{len(new_ids)} new → {len(data['album_items'][tag])} total) → {tags_file}"
     )
 
 
