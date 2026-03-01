@@ -2092,6 +2092,7 @@
                 imtVid.classList.remove('imt-anim-up', 'imt-anim-down', 'imt-anim-left', 'imt-anim-right');
                 imtVid.src = src;
                 imtVid.load();
+                imtVid.play().catch(() => { });
                 if (anim) {
                     void imtVid.offsetWidth;
                     imtVid.classList.add('imt-anim-' + anim);
@@ -2140,6 +2141,13 @@
         }
 
         document.getElementById('imt-close').addEventListener('click', closeImgTikTok);
+
+        // Click on video → toggle play/pause
+        imtVid.addEventListener('click', () => {
+            if (imtVid.paused) imtVid.play().catch(() => { });
+            else imtVid.pause();
+        });
+        imtVid.style.cursor = 'pointer';
 
         // Swipe — up/down: next/prev image; left/right: next/prev tag
         let imtTouchX = 0, imtTouchY = 0;
