@@ -468,7 +468,174 @@
             display: none;
         }
 
-        /* ═════ SAVED PANEL ═════ */
+        /* ═════ IMAGE TIKTOK VIEWER (mobile) ═════ */
+        #img-tiktok {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 1100;
+            flex-direction: column;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #img-tiktok.open {
+            display: flex;
+        }
+
+        #imt-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            background: linear-gradient(#000a, transparent);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 10;
+        }
+
+        #imt-tag-label {
+            font-size: .82rem;
+            color: #fff;
+            font-weight: 700;
+            opacity: .9;
+            max-width: 55vw;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #imt-counter {
+            font-size: .75rem;
+            color: rgba(255, 255, 255, .65);
+        }
+
+        #imt-close {
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .2);
+            color: #fff;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            font-size: 1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #imt-stage {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        #imt-img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            user-select: none;
+            -webkit-user-drag: none;
+            transition: opacity .15s;
+        }
+
+        #imt-loader {
+            position: absolute;
+            color: rgba(255, 255, 255, .5);
+            font-size: .85rem;
+        }
+
+        #imt-hint-v,
+        #imt-hint-h {
+            position: absolute;
+            font-size: .6rem;
+            color: rgba(255, 255, 255, .28);
+            pointer-events: none;
+        }
+
+        #imt-hint-v {
+            bottom: 36px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+
+        #imt-hint-h {
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+        }
+
+        @keyframes imtSlideUp {
+            from {
+                transform: translateY(40px);
+                opacity: 0
+            }
+
+            to {
+                transform: none;
+                opacity: 1
+            }
+        }
+
+        @keyframes imtSlideDown {
+            from {
+                transform: translateY(-40px);
+                opacity: 0
+            }
+
+            to {
+                transform: none;
+                opacity: 1
+            }
+        }
+
+        @keyframes imtSlideLeft {
+            from {
+                transform: translateX(40px);
+                opacity: 0
+            }
+
+            to {
+                transform: none;
+                opacity: 1
+            }
+        }
+
+        @keyframes imtSlideRight {
+            from {
+                transform: translateX(-40px);
+                opacity: 0
+            }
+
+            to {
+                transform: none;
+                opacity: 1
+            }
+        }
+
+        .imt-anim-up {
+            animation: imtSlideUp .22s ease
+        }
+
+        .imt-anim-down {
+            animation: imtSlideDown .22s ease
+        }
+
+        .imt-anim-left {
+            animation: imtSlideLeft .22s ease
+        }
+
+        .imt-anim-right {
+            animation: imtSlideRight .22s ease
+        }
+
         .saved-tab-btn {
             display: flex;
             align-items: center;
@@ -1018,6 +1185,21 @@
         <div id="lb-counter"></div>
     </div>
 
+    <!-- IMAGE TIKTOK VIEWER (mobile, tag mode) -->
+    <div id="img-tiktok">
+        <div id="imt-header">
+            <span id="imt-tag-label">🏷 tag</span>
+            <span id="imt-counter">1 / 1</span>
+            <button id="imt-close">✕</button>
+        </div>
+        <div id="imt-stage">
+            <span id="imt-loader">Loading…</span>
+            <img id="imt-img" src="" alt="" draggable="false" />
+        </div>
+        <span id="imt-hint-v">↕ swipe để đổi ảnh</span>
+        <span id="imt-hint-h">↔ swipe để đổi tag</span>
+    </div>
+
     <!-- SAVED PANEL -->
     <div id="saved-overlay"></div>
     <div id="saved-panel">
@@ -1473,10 +1655,19 @@
         // ══════════════════════════════════════════════
         function handleCardClick(card) {
             if (card.classList.contains('blurred')) {
-                // Đang blur → click 1 lần để bỏ blur
                 card.classList.remove('blurred');
             } else {
-                // Không blur → click mở lightbox
+                // On mobile with an active tag → TikTok image viewer
+                if (IS_MOBILE && activeGlobalTag) {
+                    const cards = getLoadedCards();
+                    const pageIdx = cards.indexOf(card);
+                    if (pageIdx !== -1) {
+                        // Calculate global index within the full tag list
+                        const start = (currentPage - 1) * IMAGES_PER_PAGE;
+                        openImgTikTok(start + pageIdx);
+                        return;
+                    }
+                }
                 const cards = getLoadedCards();
                 const idx = cards.indexOf(card);
                 if (idx !== -1) openLightbox(idx);
@@ -1607,6 +1798,135 @@
                 if (dx > 0 && lightboxIndex > 0) showLightboxImage(--lightboxIndex);
             }
         });
+
+        // ══════════════════════════════════════════════
+        // IMAGE TIKTOK VIEWER (mobile, tag mode)
+        // ══════════════════════════════════════════════
+        const imtOverlay = document.getElementById('img-tiktok');
+        const imtImg = document.getElementById('imt-img');
+        const imtLoader = document.getElementById('imt-loader');
+        const imtTagLabel = document.getElementById('imt-tag-label');
+        const imtCounter = document.getElementById('imt-counter');
+
+        let imtAllIds = [];   // full combined list for current tag (IDs or URLs)
+        let imtIndex = 0;    // current position within imtAllIds
+        let imtTagList = [];   // ordered visible tags
+        let imtTagIdx = 0;    // index into imtTagList
+
+        function imtIdToSrc(id) {
+            if (typeof id === 'string' && id.startsWith('http')) return id;
+            return imageUrl(id);
+        }
+
+        function imtBuildTagList() {
+            if (!window.TAGS_DATA || !window.TAGS_DATA.tags) return [];
+            const trash = getTrashSet();
+            return window.TAGS_DATA.tags.filter(tag => {
+                if (tag === 'trash') return false;
+                const ids = getTagCombinedIds(tag);
+                return ids.length > 0;
+            });
+        }
+
+        function imtLoadTag(tag, startIdx, anim) {
+            imtAllIds = window.TAGS_DATA ? getTagCombinedIds(tag) : [];
+            imtIndex = Math.max(0, Math.min(startIdx, imtAllIds.length - 1));
+            imtTagLabel.textContent = '🏷 ' + tag;
+            imtTagIdx = imtTagList.indexOf(tag);
+            imtShowAt(imtIndex, anim);
+        }
+
+        function imtShowAt(idx, anim) {
+            imtIndex = Math.max(0, Math.min(idx, imtAllIds.length - 1));
+            const id = imtAllIds[imtIndex];
+            const src = imtIdToSrc(id);
+
+            imtCounter.textContent = `${imtIndex + 1} / ${imtAllIds.length}`;
+            imtImg.style.opacity = '0';
+            imtLoader.style.display = 'block';
+
+            // Remove old animation classes
+            imtImg.classList.remove('imt-anim-up', 'imt-anim-down', 'imt-anim-left', 'imt-anim-right');
+
+            imtImg.onload = () => {
+                imtLoader.style.display = 'none';
+                imtImg.style.opacity = '1';
+                if (anim) {
+                    void imtImg.offsetWidth;
+                    imtImg.classList.add('imt-anim-' + anim);
+                }
+            };
+            imtImg.onerror = () => {
+                imtLoader.style.display = 'none';
+                imtImg.style.opacity = '.3';
+            };
+            imtImg.src = src;
+        }
+
+        function openImgTikTok(globalIdx) {
+            imtTagList = imtBuildTagList();
+            const tag = activeGlobalTag;
+            imtAllIds = getTagCombinedIds(tag);
+            imtIndex = Math.max(0, Math.min(globalIdx, imtAllIds.length - 1));
+            imtTagIdx = imtTagList.indexOf(tag);
+
+            imtTagLabel.textContent = '🏷 ' + tag;
+            imtOverlay.classList.add('open');
+            document.body.style.overflow = 'hidden';
+            imtShowAt(imtIndex, null);
+        }
+
+        function closeImgTikTok() {
+            imtOverlay.classList.remove('open');
+            document.body.style.overflow = '';
+            imtImg.src = '';
+        }
+
+        document.getElementById('imt-close').addEventListener('click', closeImgTikTok);
+
+        // Swipe — up/down: next/prev image; left/right: next/prev tag
+        let imtTouchX = 0, imtTouchY = 0;
+        imtOverlay.addEventListener('touchstart', e => {
+            imtTouchX = e.touches[0].clientX;
+            imtTouchY = e.touches[0].clientY;
+        }, { passive: true });
+
+        imtOverlay.addEventListener('touchend', e => {
+            const dx = e.changedTouches[0].clientX - imtTouchX;
+            const dy = e.changedTouches[0].clientY - imtTouchY;
+
+            if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 45) {
+                // Vertical — next/prev image in same tag
+                if (dy < 0) {
+                    // swipe up → next image
+                    if (imtIndex < imtAllIds.length - 1) imtShowAt(imtIndex + 1, 'up');
+                } else {
+                    // swipe down → prev image
+                    if (imtIndex > 0) imtShowAt(imtIndex - 1, 'down');
+                }
+            } else if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 50) {
+                // Horizontal — switch tag
+                if (!imtTagList.length) return;
+                if (dx < 0) {
+                    // swipe left → next tag (first image)
+                    const next = (imtTagIdx + 1) % imtTagList.length;
+                    imtTagIdx = next;
+                    imtLoadTag(imtTagList[next], 0, 'left');
+                } else {
+                    // swipe right → prev tag (first image)
+                    const prev = (imtTagIdx - 1 + imtTagList.length) % imtTagList.length;
+                    imtTagIdx = prev;
+                    imtLoadTag(imtTagList[prev], 0, 'right');
+                }
+            }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (!imtOverlay.classList.contains('open')) return;
+            if (e.key === 'Escape') closeImgTikTok();
+            if (e.key === 'ArrowUp' && imtIndex > 0) imtShowAt(imtIndex - 1, 'down');
+            if (e.key === 'ArrowDown' && imtIndex < imtAllIds.length - 1) imtShowAt(imtIndex + 1, 'up');
+        }, true);
 
         // ══════════════════════════════════════════════
         // SAVED MODULE
