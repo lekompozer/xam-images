@@ -544,6 +544,48 @@
             transition: opacity .15s;
         }
 
+        #imt-vid {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: none;
+            outline: none;
+        }
+
+        /* Video URL card in gallery */
+        .video-url-card {
+            background: #111;
+            border: 1px solid #333;
+        }
+
+        .video-url-card .video-thumb-placeholder {
+            width: 100%;
+            aspect-ratio: 16/9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+        }
+
+        .vtp-icon {
+            font-size: 2.5rem;
+            opacity: .7;
+        }
+
+        .vtp-title {
+            font-size: 0.75rem;
+            color: #aaa;
+            text-align: center;
+            padding: 0 10px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
         #imt-loader {
             position: absolute;
             color: rgba(255, 255, 255, .5);
@@ -1195,8 +1237,9 @@
         <div id="imt-stage">
             <span id="imt-loader">Loading…</span>
             <img id="imt-img" src="" alt="" draggable="false" />
+            <video id="imt-vid" playsinline webkit-playsinline controls preload="metadata"></video>
         </div>
-        <span id="imt-hint-v">↕ swipe để đổi ảnh</span>
+        <span id="imt-hint-v">↕ swipe để đổi ảnh / video</span>
         <span id="imt-hint-h">↔ swipe để đổi tag</span>
     </div>
 
@@ -1292,7 +1335,7 @@
             return TOTAL_PAGES;
         }
 
-        // Returns merged [integerIds..., albumUrls...] for a tag, respecting trash
+        // Returns merged [integerIds..., albumUrls..., videoObjects...] for a tag
         function getTagCombinedIds(tag) {
             const trash = getTrashSet();
             const intIds = (window.TAGS_DATA.items && window.TAGS_DATA.items[tag])
@@ -1301,7 +1344,10 @@
             const albumUrls = (window.TAGS_DATA.album_items && window.TAGS_DATA.album_items[tag])
                 ? window.TAGS_DATA.album_items[tag]
                 : [];
-            return [...intIds, ...albumUrls];
+            const videoItems = (window.TAGS_DATA.video_items && window.TAGS_DATA.video_items[tag])
+                ? window.TAGS_DATA.video_items[tag]  // [{url, title}] objects
+                : [];
+            return [...intIds, ...albumUrls, ...videoItems];
         }
 
         function getPageIds(page) {
@@ -1347,7 +1393,9 @@
                 const rawIds = window.TAGS_DATA.items[tag] || [];
                 const albumCnt = (window.TAGS_DATA.album_items && window.TAGS_DATA.album_items[tag])
                     ? window.TAGS_DATA.album_items[tag].length : 0;
-                const cnt = (tag === 'trash' ? rawIds.length : rawIds.filter(id => !trash.has(id)).length) + albumCnt;
+                const videoCnt = (window.TAGS_DATA.video_items && window.TAGS_DATA.video_items[tag])
+                    ? window.TAGS_DATA.video_items[tag].length : 0;
+                const cnt = (tag === 'trash' ? rawIds.length : rawIds.filter(id => !trash.has(id)).length) + albumCnt + videoCnt;
                 if (!cnt) return;
                 const chip = document.createElement('button');
                 chip.className = 'gtag-chip' + (activeGlobalTag === tag ? ' active' : '');
@@ -1484,8 +1532,14 @@
         }
 
         // Build and append a single card to gallery (returns card element)
+        function isVideoUrl(url) {
+            return /\.(mp4|webm|mov)(\?|$)/i.test(url);
+        }
+
         function createCard(id) {
-            // URL-based card (e.g. from anh.moe album)
+            // video_items object {url, title}
+            if (typeof id === 'object' && id !== null && id.url) return createVideoUrlCard(id);
+            // URL-based image card (e.g. from anh.moe album)
             if (typeof id === 'string' && id.startsWith('http')) return createUrlCard(id);
             const card = document.createElement('div');
             card.className = 'img-card blurred skeleton';
@@ -1563,6 +1617,39 @@
             guard.addEventListener('click', () => handleCardClick(card));
 
             card.appendChild(img);
+            card.appendChild(guard);
+            document.getElementById('gallery').appendChild(card);
+            return card;
+        }
+
+        // Video item card from video_items — shows thumbnail placeholder
+        function createVideoUrlCard(item) {
+            const card = document.createElement('div');
+            card.className = 'img-card video-url-card';
+            card.dataset.id = item.url;
+            card.dataset.src = item.url;
+            card.dataset.isVideo = 'true';
+
+            const ph = document.createElement('div');
+            ph.className = 'video-thumb-placeholder';
+
+            const icon = document.createElement('div');
+            icon.className = 'vtp-icon';
+            icon.textContent = '▶';
+
+            const title = document.createElement('div');
+            title.className = 'vtp-title';
+            title.textContent = item.title || '';
+
+            ph.appendChild(icon);
+            ph.appendChild(title);
+
+            const guard = document.createElement('div');
+            guard.className = 'img-guard';
+            guard.addEventListener('contextmenu', e => e.preventDefault());
+            guard.addEventListener('click', () => handleCardClick(card));
+
+            card.appendChild(ph);
             card.appendChild(guard);
             document.getElementById('gallery').appendChild(card);
             return card;
@@ -1657,12 +1744,13 @@
             if (card.classList.contains('blurred')) {
                 card.classList.remove('blurred');
             } else {
+                // Video items → always open TikTok viewer (both mobile & desktop)
+                const isVideoCard = card.dataset.isVideo === 'true';
                 // On mobile with an active tag → TikTok image viewer
-                if (IS_MOBILE && activeGlobalTag) {
+                if (isVideoCard || (IS_MOBILE && activeGlobalTag)) {
                     const cards = getLoadedCards();
                     const pageIdx = cards.indexOf(card);
                     if (pageIdx !== -1) {
-                        // Calculate global index within the full tag list
                         const start = (currentPage - 1) * IMAGES_PER_PAGE;
                         openImgTikTok(start + pageIdx);
                         return;
@@ -1804,16 +1892,19 @@
         // ══════════════════════════════════════════════
         const imtOverlay = document.getElementById('img-tiktok');
         const imtImg = document.getElementById('imt-img');
+        const imtVid = document.getElementById('imt-vid');
         const imtLoader = document.getElementById('imt-loader');
         const imtTagLabel = document.getElementById('imt-tag-label');
         const imtCounter = document.getElementById('imt-counter');
 
-        let imtAllIds = [];   // full combined list for current tag (IDs or URLs)
-        let imtIndex = 0;    // current position within imtAllIds
-        let imtTagList = [];   // ordered visible tags
-        let imtTagIdx = 0;    // index into imtTagList
+        let imtAllIds = [];   // full combined list: ints, imgUrls, {url,title} objects
+        let imtIndex = 0;
+        let imtTagList = [];
+        let imtTagIdx = 0;
 
+        // Get URL from any ID type
         function imtIdToSrc(id) {
+            if (typeof id === 'object' && id !== null) return id.url || '';
             if (typeof id === 'string' && id.startsWith('http')) return id;
             return imageUrl(id);
         }
@@ -1840,27 +1931,48 @@
             imtIndex = Math.max(0, Math.min(idx, imtAllIds.length - 1));
             const id = imtAllIds[imtIndex];
             const src = imtIdToSrc(id);
+            const isVid = isVideoUrl(src);
 
             imtCounter.textContent = `${imtIndex + 1} / ${imtAllIds.length}`;
-            imtImg.style.opacity = '0';
-            imtLoader.style.display = 'block';
 
-            // Remove old animation classes
-            imtImg.classList.remove('imt-anim-up', 'imt-anim-down', 'imt-anim-left', 'imt-anim-right');
+            // Stop any playing video when switching
+            if (!isVid) {
+                imtVid.pause();
+                imtVid.src = '';
+                imtVid.style.display = 'none';
+            }
 
-            imtImg.onload = () => {
+            if (isVid) {
+                imtImg.style.display = 'none';
+                imtImg.src = '';
                 imtLoader.style.display = 'none';
-                imtImg.style.opacity = '1';
+                imtVid.style.display = 'block';
+                imtVid.classList.remove('imt-anim-up', 'imt-anim-down', 'imt-anim-left', 'imt-anim-right');
+                imtVid.src = src;
+                imtVid.load();
                 if (anim) {
-                    void imtImg.offsetWidth;
-                    imtImg.classList.add('imt-anim-' + anim);
+                    void imtVid.offsetWidth;
+                    imtVid.classList.add('imt-anim-' + anim);
                 }
-            };
-            imtImg.onerror = () => {
-                imtLoader.style.display = 'none';
-                imtImg.style.opacity = '.3';
-            };
-            imtImg.src = src;
+            } else {
+                imtImg.style.display = '';
+                imtImg.style.opacity = '0';
+                imtLoader.style.display = 'block';
+                imtImg.classList.remove('imt-anim-up', 'imt-anim-down', 'imt-anim-left', 'imt-anim-right');
+                imtImg.onload = () => {
+                    imtLoader.style.display = 'none';
+                    imtImg.style.opacity = '1';
+                    if (anim) {
+                        void imtImg.offsetWidth;
+                        imtImg.classList.add('imt-anim-' + anim);
+                    }
+                };
+                imtImg.onerror = () => {
+                    imtLoader.style.display = 'none';
+                    imtImg.style.opacity = '.3';
+                };
+                imtImg.src = src;
+            }
         }
 
         function openImgTikTok(globalIdx) {
@@ -1880,6 +1992,9 @@
             imtOverlay.classList.remove('open');
             document.body.style.overflow = '';
             imtImg.src = '';
+            imtVid.pause();
+            imtVid.src = '';
+            imtVid.style.display = 'none';
         }
 
         document.getElementById('imt-close').addEventListener('click', closeImgTikTok);

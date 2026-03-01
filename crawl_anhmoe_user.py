@@ -1,0 +1,197 @@
+#!/usr/bin/env python3
+"""
+Crawl video links from an anh.moe user/profile page (or any paginated listing).
+Saves results to video_items[tag] in tags-data.js (appends + deduplicates by url).
+
+Usage:
+  python3 crawl_anhmoe_user.py <user_url> <tag> [max_pages]
+
+Example:
+  python3 crawl_anhmoe_user.py "https://anh.moe/maihuyhoang" "Clip-Tiktok" 100
+"""
+
+import re, sys, time, json, os
+import requests
+from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse, parse_qs
+
+HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Referer": "https://anh.moe/",
+}
+BASE = "https://anh.moe"
+DELAY_PAGE = 1.0
+DELAY_VIEW = 0.6
+
+VIDEO_CDN_RE = re.compile(
+    r'https://cdn\.(?:save|anh)\.moe/[^\s"\'<>]+\.(?:mp4|webm|mov)',
+    re.I,
+)
+
+session = requests.Session()
+session.headers.update(HEADERS)
+
+
+def get(url, retries=3):
+    for i in range(retries):
+        try:
+            r = session.get(url, timeout=15)
+            r.raise_for_status()
+            return r
+        except Exception as e:
+            print(f"  [warn] {e} (attempt {i+1}/{retries})", file=sys.stderr)
+            time.sleep(2)
+    return None
+
+
+def current_page_num(url):
+    qs = parse_qs(urlparse(url).query)
+    try:
+        return int(qs.get("page", ["1"])[0])
+    except ValueError:
+        return 1
+
+
+def title_from_view_url(view_url):
+    path = urlparse(view_url).path
+    slug = path.rstrip("/").rsplit("/", 1)[-1]
+    parts = slug.split(".")
+    if (
+        parts
+        and re.match(r"^[A-Za-z0-9]{5,12}$", parts[-1])
+        and not parts[-1].isdigit()
+    ):
+        parts = parts[:-1]
+    return re.sub(r"[-_]+", " ", " ".join(parts)).strip()
+
+
+def get_view_links_from_page(url):
+    r = get(url)
+    if not r:
+        return [], None
+    soup = BeautifulSoup(r.text, "html.parser")
+    seen, links = set(), []
+    for a in soup.select("a[href^='/view/']"):
+        href = a.get("href", "")
+        full = urljoin(BASE, href)
+        if full not in seen:
+            seen.add(full)
+            links.append(full)
+    n = current_page_num(url)
+    next_url = None
+    for a in soup.select("a[href]"):
+        href = a.get("href", "")
+        if f"page={n + 1}" in href and "seek=" in href:
+            next_url = urljoin(BASE, href)
+            break
+    return links, next_url
+
+
+def crawl_user_view_links(start_url, max_pages=100):
+    all_links, seen, url = [], set(), start_url
+    pages = 0
+    while url and pages < max_pages:
+        n = current_page_num(url)
+        print(f"[page {n}] {url}")
+        links, next_url = get_view_links_from_page(url)
+        new = [u for u in links if u not in seen]
+        seen.update(new)
+        all_links.extend(new)
+        print(f"  → {len(links)} view links ({len(new)} new)")
+        pages += 1
+        url = next_url
+        if next_url:
+            time.sleep(DELAY_PAGE)
+    return all_links
+
+
+def scrape_view_page(view_url):
+    r = get(view_url)
+    if not r:
+        return None, title_from_view_url(view_url)
+    soup = BeautifulSoup(r.text, "html.parser")
+    dl_a = soup.select_one("a[href*='?dl=']")
+    if dl_a:
+        raw = dl_a.get("href", "").split("?")[0].strip()
+        if raw:
+            return raw, title_from_view_url(view_url)
+    matches = VIDEO_CDN_RE.findall(r.text)
+    if matches:
+        return matches[0], title_from_view_url(view_url)
+    return None, title_from_view_url(view_url)
+
+
+def update_tags_data(tag, new_videos, tags_file="tags-data.js"):
+    """Append {url, title} entries to video_items[tag] in tags-data.js."""
+    if not os.path.exists(tags_file):
+        print(f"[warn] {tags_file} not found.")
+        return
+    with open(tags_file, encoding="utf-8") as f:
+        content = f.read()
+    m = re.search(r"window\.TAGS_DATA\s*=\s*(\{.*\})\s*;", content, re.DOTALL)
+    if not m:
+        print("[error] Could not parse TAGS_DATA")
+        return
+    data = json.loads(m.group(1))
+
+    # Auto-add tag to tags list and items if missing
+    if tag not in data.get("tags", []):
+        data.setdefault("tags", []).append(tag)
+        print(f"  Added '{tag}' to tags list")
+    if tag not in data.get("items", {}):
+        data.setdefault("items", {})[tag] = []
+
+    # video_items: list of {url, title}
+    if "video_items" not in data:
+        data["video_items"] = {}
+    existing = data["video_items"].get(tag, [])
+    existing_urls = {v["url"] for v in existing if isinstance(v, dict)}
+    appended = [v for v in new_videos if v["url"] not in existing_urls]
+    data["video_items"][tag] = existing + appended
+    total = len(data["video_items"][tag])
+    print(f"  existing: {len(existing)}, new: {len(appended)}, total: {total}")
+
+    new_json = json.dumps(data, ensure_ascii=False, indent=2)
+    with open(tags_file, "w", encoding="utf-8") as f:
+        f.write(
+            f"// Auto-generated by indexlocal.html\nwindow.TAGS_DATA = {new_json};\n"
+        )
+    print(f"[tags-data.js] video_items['{tag}'] updated → {total} total videos")
+
+
+if __name__ == "__main__":
+    user_url = sys.argv[1] if len(sys.argv) > 1 else "https://anh.moe/maihuyhoang"
+    tag = sys.argv[2] if len(sys.argv) > 2 else "Clip-Tiktok"
+    max_pages = int(sys.argv[3]) if len(sys.argv) > 3 else 100
+
+    print("=" * 60)
+    print(f"URL  : {user_url}")
+    print(f"Tag  : {tag}")
+    print(f"Max  : {max_pages} pages")
+    print("=" * 60)
+
+    view_links = crawl_user_view_links(user_url, max_pages)
+    print(f"\nTotal view pages: {len(view_links)}\n")
+
+    videos, failed = [], 0
+    for i, vurl in enumerate(view_links, 1):
+        url, title = scrape_view_page(vurl)
+        status = "✓" if url else "✗"
+        print(f"  [{i:3d}/{len(view_links)}] {status}  {title[:55]}")
+        if url:
+            videos.append({"url": url, "title": title})
+        else:
+            failed += 1
+        time.sleep(DELAY_VIEW)
+
+    print(f"\n{'='*60}")
+    print(f"Videos found : {len(videos)}")
+    print(f"Failed/skip  : {failed}")
+
+    if videos:
+        update_tags_data(tag, videos)
+    else:
+        print("No videos found — nothing written.")

@@ -97,6 +97,22 @@
         }
 
         /* CONTROLS */
+        #vid-search-input {
+            flex: 1;
+            max-width: 280px;
+            padding: 5px 10px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg);
+            color: var(--text);
+            font-size: 0.85rem;
+        }
+
+        #vid-search-input::placeholder {
+            color: var(--text-dim);
+            opacity: 0.6;
+        }
+
         .controls {
             background: var(--surface);
             border-bottom: 1px solid var(--border);
@@ -276,6 +292,19 @@
             overflow: hidden;
             white-space: nowrap;
             text-overflow: ellipsis;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .video-thread-label {
+            display: block;
+            font-size: 0.72rem;
+            color: var(--accent2);
+            opacity: 0.75;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-top: 2px;
         }
 
         .video-thread-link {
@@ -1060,6 +1089,85 @@
             white-space: nowrap;
         }
 
+        /* ── TikTok bottom controls bar ── */
+        #tiktok-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 10px 14px 14px;
+            background: linear-gradient(transparent, rgba(0, 0, 0, .72));
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .22s;
+            z-index: 20;
+        }
+
+        #tiktok-controls.tt-ctrl-visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #tt-seekbar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #tt-time {
+            font-size: .72rem;
+            color: rgba(255, 255, 255, .85);
+            white-space: nowrap;
+            min-width: 72px;
+            text-align: right;
+        }
+
+        #tt-seekbar {
+            flex: 1;
+            -webkit-appearance: none;
+            appearance: none;
+            height: 3px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, .3);
+            outline: none;
+            cursor: pointer;
+        }
+
+        #tt-seekbar::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            background: #fff;
+            cursor: pointer;
+            box-shadow: 0 0 3px rgba(0, 0, 0, .5);
+        }
+
+        #tt-skip-row {
+            display: flex;
+            justify-content: center;
+            gap: 28px;
+        }
+
+        .tt-skip-btn {
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .2);
+            color: #fff;
+            border-radius: 20px;
+            padding: 5px 16px;
+            font-size: .8rem;
+            cursor: pointer;
+            backdrop-filter: blur(4px);
+            transition: background .15s;
+        }
+
+        .tt-skip-btn:hover {
+            background: rgba(255, 255, 255, .25);
+        }
+
         @keyframes ttSlideInUp {
             from {
                 transform: translateY(55px);
@@ -1163,6 +1271,7 @@
                 <div class="controls" id="controls-top">
                     <span class="page-info">Page <span id="cur-page-lbl">-</span> / <span
                             id="total-pages-lbl">-</span></span>
+                    <input type="text" id="vid-search-input" placeholder="🔍 Tìm video…" autocomplete="off" />
                     <div class="pagination" id="pagination-top"></div>
                 </div>
 
@@ -1205,6 +1314,16 @@
                     <button class="tt-nav-btn" id="tiktok-next-btn" title="Video sau (↓)">▼</button>
                 </div>
                 <div id="tiktok-scroll-hint">scroll ↕ để đổi</div>
+                <div id="tiktok-controls">
+                    <div id="tt-seekbar-row">
+                        <input type="range" id="tt-seekbar" min="0" max="100" step="0.1" value="0">
+                        <span id="tt-time">0:00 / 0:00</span>
+                    </div>
+                    <div id="tt-skip-row">
+                        <button class="tt-skip-btn" id="tt-back10">« 10s</button>
+                        <button class="tt-skip-btn" id="tt-fwd10">10s »</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -1295,10 +1414,18 @@
                 const out = [];
                 for (const t of (data.threads || [])) {
                     const tvids = [];
-                    for (const src of (t.videos || [])) {
+                    for (const video of (t.videos || [])) {
+                        // Support both old plain-string format and new {url, title} object format
+                        const src = typeof video === 'string' ? video : (video.url || '');
+                        const vidTitle = typeof video === 'string' ? '' : (video.title || '');
                         if (!src.startsWith('http')) continue;
                         if (src.includes('%3A') || src.includes('[')) continue;
-                        const item = { src, title: t.title || '', threadUrl: t.url || '' };
+                        const item = {
+                            src,
+                            title: vidTitle || t.title || '',
+                            threadTitle: t.title || '',
+                            threadUrl: t.url || ''
+                        };
                         out.push(item);
                         tvids.push(item);
                     }
@@ -1441,7 +1568,7 @@
             // ══════════════════════════════════════════════
             // VIDEO CARD
             // ══════════════════════════════════════════════
-            function createVideoCard({ src, title, threadUrl }) {
+            function createVideoCard({ src, title, threadTitle, threadUrl }) {
                 const card = document.createElement('div');
                 card.className = 'video-card';
 
@@ -1450,7 +1577,14 @@
 
                 const ttl = document.createElement('div');
                 ttl.className = 'video-title';
-                ttl.textContent = title || threadUrl;
+                ttl.textContent = title || threadTitle || threadUrl;
+                // Show thread name as subtitle when video has its own title
+                if (title && threadTitle && title !== threadTitle) {
+                    const sub = document.createElement('div');
+                    sub.className = 'video-thread-label';
+                    sub.textContent = threadTitle;
+                    ttl.appendChild(sub);
+                }
 
                 const link = document.createElement('a');
                 link.className = 'video-thread-link';
@@ -1617,8 +1751,17 @@
             // ══════════════════════════════════════════════
             // RENDER PAGE
             // ══════════════════════════════════════════════
+            let videoSearchQuery = '';
+
             function renderPage() {
-                const source = activeThread ? activeThread.videos : allVideos;
+                let source = activeThread ? activeThread.videos : allVideos;
+                if (videoSearchQuery) {
+                    const q = videoSearchQuery.toLowerCase();
+                    source = source.filter(v =>
+                        (v.title || '').toLowerCase().includes(q) ||
+                        (v.threadTitle || '').toLowerCase().includes(q)
+                    );
+                }
                 totalPages = Math.max(1, Math.ceil(source.length / VIDEOS_PER_PAGE));
                 currentPage = Math.max(1, Math.min(currentPage, totalPages));
 
@@ -2042,6 +2185,14 @@
                 vid.load();
                 vid.play().catch(() => { });
 
+                // Reset controls bar on new video
+                if (typeof ttControls !== 'undefined') {
+                    clearTimeout(ttCtrlTimer);
+                    ttControls.classList.remove('tt-ctrl-visible');
+                    ttSeekbar.value = 0;
+                    ttTime.textContent = '0:00 / 0:00';
+                }
+
                 // On error: remove dead video + skip forward
                 vid.onerror = () => {
                     const deadSrc = item.src;
@@ -2128,10 +2279,59 @@
                 }
             });
 
-            // Buttons
+            // TikTok controls: show on tap, auto-hide after 3s
+            let ttCtrlTimer = null;
+            const ttControls = document.getElementById('tiktok-controls');
+            const ttSeekbar = document.getElementById('tt-seekbar');
+            const ttTime = document.getElementById('tt-time');
+
+            function ttFmtTime(s) {
+                if (!isFinite(s)) return '0:00';
+                const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+                return `${m}:${sec.toString().padStart(2, '0')}`;
+            }
+            function ttShowControls() {
+                ttControls.classList.add('tt-ctrl-visible');
+                clearTimeout(ttCtrlTimer);
+                ttCtrlTimer = setTimeout(() => ttControls.classList.remove('tt-ctrl-visible'), 3000);
+            }
+
             document.getElementById('tiktok-video').addEventListener('click', () => {
                 const v = document.getElementById('tiktok-video');
                 v.paused ? v.play().catch(() => { }) : v.pause();
+                ttShowControls();
+            });
+
+            // seekbar — update as video plays
+            document.getElementById('tiktok-video').addEventListener('timeupdate', () => {
+                const v = document.getElementById('tiktok-video');
+                if (!v.duration) return;
+                ttSeekbar.value = (v.currentTime / v.duration) * 100;
+                ttTime.textContent = `${ttFmtTime(v.currentTime)} / ${ttFmtTime(v.duration)}`;
+            });
+            document.getElementById('tiktok-video').addEventListener('loadedmetadata', () => {
+                const v = document.getElementById('tiktok-video');
+                ttSeekbar.value = 0;
+                ttTime.textContent = `0:00 / ${ttFmtTime(v.duration)}`;
+            });
+
+            // seekbar drag
+            ttSeekbar.addEventListener('input', () => {
+                const v = document.getElementById('tiktok-video');
+                if (v.duration) v.currentTime = (ttSeekbar.value / 100) * v.duration;
+                ttShowControls();
+            });
+
+            // ±10s skip buttons
+            document.getElementById('tt-back10').addEventListener('click', () => {
+                const v = document.getElementById('tiktok-video');
+                v.currentTime = Math.max(0, v.currentTime - 10);
+                ttShowControls();
+            });
+            document.getElementById('tt-fwd10').addEventListener('click', () => {
+                const v = document.getElementById('tiktok-video');
+                v.currentTime = Math.min(v.duration || Infinity, v.currentTime + 10);
+                ttShowControls();
             });
             document.getElementById('tiktok-prev-btn').addEventListener('click', tikTokPrev);
             document.getElementById('tiktok-next-btn').addEventListener('click', tikTokNext);
@@ -2150,6 +2350,11 @@
             });
             document.getElementById('topics-search-input').addEventListener('input', e => {
                 renderTopicsSidebar(e.target.value);
+            });
+            document.getElementById('vid-search-input').addEventListener('input', e => {
+                videoSearchQuery = e.target.value.trim();
+                currentPage = 1;
+                renderPage();
             });
 
             // ══════════════════════════════════════════════

@@ -13,7 +13,8 @@ from bs4 import BeautifulSoup
 # ── CONFIG ────────────────────────────────────────────────
 BASE = "https://xamvn.bond"
 FORUM_URL = "https://xamvn.bond/forums/3/"
-MAX_THREADS = 500  # set to None to crawl all
+MAX_THREADS = 500  # used by default / resume mode
+MAX_PAGES = 120  # used by --new-topics mode
 DELAY = 0.8  # seconds between requests
 OUTPUT = "videos.json"
 OUTPUT_JS = "videos-data.js"  # inline JS for file:// access
@@ -68,6 +69,61 @@ def get_page(url):
 def get_soup(url):
     soup, _ = get_page(url)
     return soup
+
+
+# ── STEP 1b: collect thread URLs + title hints from listing pages ──
+def get_thread_list_with_titles(max_pages=MAX_PAGES):
+    """Scrape up to max_pages category pages and return [(url, title_hint)].
+    title_hint is the link text shown on the listing page (fast, no thread fetch).
+    """
+    results = []  # [(url, title)]
+    seen_urls = set()
+    page = 1
+    while page <= max_pages:
+        url = FORUM_URL if page == 1 else f"{FORUM_URL}page-{page}"
+        print(f"[listing] page {page}/{max_pages}: {url}")
+        soup = get_soup(url)
+        if not soup:
+            print("  → fetch failed, stopping.")
+            break
+
+        new = 0
+        links = soup.select("a[href*='/threads/']")  # XenForo thread links
+        for a in links:
+            href = a.get("href", "")
+            m = re.match(r"(/threads/\d+/)$", href)
+            if not m:
+                m = re.match(r".+(/threads/\d+/)$", href)
+            if not m:
+                m = re.match(r"https?://[^/]+(/threads/\d+/)(\?.*)?$", href)
+                if m:
+                    href = BASE + m.group(1)
+                else:
+                    continue
+            else:
+                href = urljoin(BASE, href)
+            if href in seen_urls:
+                continue
+            seen_urls.add(href)
+            title_hint = a.get_text(" ", strip=True)
+            results.append((href, title_hint))
+            new += 1
+
+        if not new:
+            print("  → no new threads found, stopping.")
+            break
+        print(f"  → {new} threads (total {len(results)})")
+
+        next_btn = soup.select_one(
+            "a.pageNav-jump--next, a[rel='next'], .pagination a.next"
+        )
+        if not next_btn:
+            print("  → last page reached.")
+            break
+        page += 1
+        time.sleep(DELAY)
+
+    return results
 
 
 # ── STEP 1: collect thread URLs from category pages ───────
@@ -246,6 +302,7 @@ def main():
 
     resume = "--resume" in sys.argv or "-r" in sys.argv
     fix_titles = "--fix-titles" in sys.argv
+    new_topics = "--new-topics" in sys.argv
 
     print("=" * 60)
     print(f"Crawling forum: {FORUM_URL}")
@@ -254,19 +311,21 @@ def main():
         print("Mode: RESUME (load existing + continue)")
     elif fix_titles:
         print("Mode: FIX TITLES (re-fetch bad titles only)")
+    elif new_topics:
+        print(f"Mode: NEW TOPICS (scan {MAX_PAGES} pages, skip duplicate titles)")
     print("=" * 60)
 
-    # ── load existing results if resume / fix-titles ──────
+    # ── load existing results if resume / fix-titles / new-topics ──
     existing_results = []
     existing_urls = set()
-    if (resume or fix_titles) and os.path.exists(OUTPUT):
+    if (resume or fix_titles or new_topics) and os.path.exists(OUTPUT):
         with open(OUTPUT, encoding="utf-8") as f:
             saved = json.load(f)
         existing_results = saved.get("threads", [])
         existing_urls = {t["url"] for t in existing_results}
         print(f"Loaded {len(existing_results)} existing threads from {OUTPUT}")
 
-    # ── fix-titles mode: re-crawl threads with bad title ──
+    # ── fix-titles mode ────────────────────────────────────
     if fix_titles:
         bad_titles = {"xamvn", "xam vn", ""}
         to_fix = [
@@ -293,7 +352,53 @@ def main():
         print(f"\nFixed {len(to_fix)} titles → saved to {OUTPUT}")
         return
 
-    # ── collect thread URLs ────────────────────────────────
+    # ── new-topics mode: scan listing pages, skip duplicate titles ──
+    if new_topics:
+        # Build set of existing titles (normalised lowercase)
+        existing_titles = {t.get("title", "").strip().lower() for t in existing_results}
+        existing_titles.discard("")  # ignore blank titles
+        print(f"Existing unique titles in DB: {len(existing_titles)}")
+
+        print(f"\nScanning {MAX_PAGES} listing pages for thread list…")
+        listing = get_thread_list_with_titles(MAX_PAGES)  # [(url, title_hint)]
+        print(f"Total threads found in listing: {len(listing)}")
+
+        # Filter: skip URL already crawled OR title already in DB
+        to_crawl = []
+        skipped_url = 0
+        skipped_title = 0
+        for url, title_hint in listing:
+            if url in existing_urls:
+                skipped_url += 1
+                continue
+            if title_hint.strip().lower() in existing_titles:
+                skipped_title += 1
+                continue
+            to_crawl.append(url)
+
+        print(f"Skipped (URL already crawled): {skipped_url}")
+        print(f"Skipped (title duplicate): {skipped_title}")
+        print(f"New threads to crawl: {len(to_crawl)}\n")
+
+        results = list(existing_results)
+        total_videos = sum(len(t.get("videos", [])) for t in results)
+
+        for i, url in enumerate(to_crawl, 1):
+            print(f"\n[{i}/{len(to_crawl)}] {url}")
+            data = get_mp4s_from_thread(url)
+            results.append(data)
+            total_videos += len(data["videos"])
+            flag = " ✓ VIDEO" if data["videos"] else ""
+            print(f"  → {len(data['videos'])} mp4(s){flag}  |  {data['title'][:70]}")
+            if i % 10 == 0:
+                save_output(results, total_videos)
+                print(f"  [saved] {len(results)} threads so far")
+            time.sleep(DELAY)
+
+        save_output(results, total_videos)
+        print(f"\nDONE — {len(results)} total threads, {total_videos} total mp4 links")
+        print(f"New threads added: {len(to_crawl)}")
+        return
     thread_urls = get_thread_urls(max_threads=MAX_THREADS)
     print(f"\nCollected {len(thread_urls)} threads to scan.\n")
 
