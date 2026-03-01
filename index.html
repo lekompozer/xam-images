@@ -552,6 +552,91 @@
             outline: none;
         }
 
+        /* ── Video Modal (vmodal) ── */
+        #vmodal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .85);
+            z-index: 600;
+        }
+
+        #vmodal-overlay.open {
+            display: block;
+        }
+
+        #vmodal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(.96);
+            z-index: 601;
+            background: #14141a;
+            border: 1px solid #2a2a35;
+            border-radius: 10px;
+            width: min(94vw, 820px);
+            max-height: 92dvh;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 24px 64px rgba(0, 0, 0, .8);
+            transition: transform .18s cubic-bezier(.4, 0, .2, 1), opacity .18s;
+            opacity: 0;
+        }
+
+        #vmodal.open {
+            display: flex;
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+
+        #vmodal-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 14px;
+            border-bottom: 1px solid #2a2a35;
+            flex-shrink: 0;
+            gap: 10px;
+        }
+
+        #vmodal-title {
+            font-size: 0.82rem;
+            color: #ccc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #vmodal-close {
+            background: none;
+            border: 1px solid #444;
+            color: #ccc;
+            font-size: 0.9rem;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color .15s, border-color .15s;
+        }
+
+        #vmodal-close:hover {
+            color: #e05c5c;
+            border-color: #e05c5c;
+        }
+
+        #vmodal video {
+            width: 100%;
+            max-height: calc(92dvh - 52px);
+            background: #000;
+            display: block;
+            outline: none;
+        }
+
         /* ── Video URL card in gallery ── */
         .video-url-card {
             background: #0e0e12;
@@ -1312,6 +1397,16 @@
         <span id="imt-hint-h">↔ swipe để đổi tag</span>
     </div>
 
+    <!-- VIDEO MODAL -->
+    <div id="vmodal-overlay"></div>
+    <div id="vmodal">
+        <div id="vmodal-head">
+            <span id="vmodal-title"></span>
+            <button id="vmodal-close" title="Đóng (Esc)">✕</button>
+        </div>
+        <video id="vmodal-video" controls playsinline preload="metadata"></video>
+    </div>
+
     <!-- SAVED PANEL -->
     <div id="saved-overlay"></div>
     <div id="saved-panel">
@@ -1341,8 +1436,17 @@
         const START_ID = 47102;
         const END_ID = 634220;
         const IS_MOBILE = window.innerWidth <= 768;
-        const IMAGES_PER_PAGE = IS_MOBILE ? 40 : 60;    // 40 on mobile, 60 on desktop
+        let IMAGES_PER_PAGE = IS_MOBILE ? 40 : 60;    // updated by updatePageSize()
         const LAZY_BATCH = IS_MOBILE ? 10 : 20;
+
+        // Adjust page size for video-only tags (heavy elements, fewer per page)
+        function updatePageSize(tag) {
+            const hasVid = tag && window.TAGS_DATA?.video_items?.[tag]?.length > 0;
+            const hasImg = tag && ((window.TAGS_DATA?.items?.[tag]?.length > 0) ||
+                (window.TAGS_DATA?.album_items?.[tag]?.length > 0));
+            IMAGES_PER_PAGE = (hasVid && !hasImg) ? (IS_MOBILE ? 5 : 10)
+                : (IS_MOBILE ? 40 : 60);
+        }
 
         // ══════════════════════════════════════════════
         // DERIVED CONSTANTS
@@ -1452,7 +1556,13 @@
             allChip.className = 'gtag-chip' + (!activeGlobalTag ? ' active' : '');
             allChip.textContent = '# All';
             allChip.onclick = () => {
-                if (activeGlobalTag) { activeGlobalTag = null; clearGalleryMemory(); initGallery(); window.scrollTo(0, 0); }
+                if (activeGlobalTag) {
+                    activeGlobalTag = null;
+                    updatePageSize(null);
+                    clearGalleryMemory();
+                    initGallery();
+                    window.scrollTo(0, 0);
+                }
             };
             bar.appendChild(allChip);
 
@@ -1473,6 +1583,7 @@
                 chip.onclick = () => {
                     clearGalleryMemory();
                     activeGlobalTag = (activeGlobalTag === tag) ? null : tag;
+                    updatePageSize(activeGlobalTag);
                     currentPage = 1;
                     renderGlobalTagBar();
                     initGallery();
@@ -1691,7 +1802,7 @@
             return card;
         }
 
-        // Video item card from video_items — identical UX to videos.html createVideoCard
+        // Video item card from video_items — placeholder click → openVideoModal
         function createVideoUrlCard(item) {
             const card = document.createElement('div');
             card.className = 'img-card video-url-card';
@@ -1725,60 +1836,47 @@
             hdr.appendChild(watchBtn);
             card.appendChild(hdr);
 
-            // ── Video / placeholder ──
-            const vid = document.createElement('video');
-            vid.controls = true;
-            vid.preload = 'metadata';
-            vid.playsinline = true;
-            vid.setAttribute('playsinline', '');
-            vid.setAttribute('webkit-playsinline', '');
-            vid.setAttribute('controlslist', 'nodownload');
-            vid.addEventListener('contextmenu', e => e.preventDefault());
-            vid.src = item.url;
+            // ── Click-to-play placeholder (both mobile and desktop) ──
+            const ph = document.createElement('div');
+            ph.className = 'video-placeholder';
+            const icon = document.createElement('div');
+            icon.className = 'vp-icon';
+            icon.textContent = '▶️';
+            const lbl = document.createElement('div');
+            lbl.className = 'vp-label';
+            lbl.textContent = IS_MOBILE ? 'Tap to play' : 'Click to play';
+            ph.appendChild(icon);
+            ph.appendChild(lbl);
 
-            // Dead link → remove card silently
-            vid.addEventListener('error', () => card.remove());
+            // Click → open full-size modal
+            ph.addEventListener('click', () => openVideoModal(item.url, item.title || ''));
 
-            // Desktop: auto-capture poster from first frame
-            if (!IS_MOBILE) {
-                vid.addEventListener('loadedmetadata', () => {
-                    vid.currentTime = 0.01;
-                }, { once: true });
-                vid.addEventListener('seeked', () => {
-                    try {
-                        const c = document.createElement('canvas');
-                        c.width = vid.videoWidth || 320;
-                        c.height = vid.videoHeight || 180;
-                        c.getContext('2d').drawImage(vid, 0, 0, c.width, c.height);
-                        vid.poster = c.toDataURL('image/jpeg', 0.75);
-                    } catch (e) { }
-                }, { once: true });
-            }
-
-            // Mobile: replace video with tap-to-play placeholder
-            let videoEl = vid;
-            if (IS_MOBILE) {
-                const ph = document.createElement('div');
-                ph.className = 'video-placeholder';
-                const icon = document.createElement('div');
-                icon.className = 'vp-icon';
-                icon.textContent = '▶️';
-                const lbl = document.createElement('div');
-                lbl.className = 'vp-label';
-                lbl.textContent = 'Tap to play';
-                ph.appendChild(icon);
-                ph.appendChild(lbl);
-                ph.addEventListener('click', () => {
-                    ph.replaceWith(vid);
-                    vid.play().catch(() => { });
-                });
-                videoEl = ph;
-            }
-
-            card.appendChild(videoEl);
+            card.appendChild(ph);
             document.getElementById('gallery').appendChild(card);
             return card;
         }
+
+        // ══════════════════════════════════════════════
+        // VIDEO MODAL
+        // ══════════════════════════════════════════════
+        function openVideoModal(src, title) {
+            document.getElementById('vmodal-video').src = src;
+            document.getElementById('vmodal-title').textContent = title || src;
+            document.getElementById('vmodal-overlay').classList.add('open');
+            document.getElementById('vmodal').classList.add('open');
+            document.getElementById('vmodal-video').play().catch(() => { });
+        }
+
+        function closeVideoModal() {
+            const vid = document.getElementById('vmodal-video');
+            vid.pause();
+            vid.src = '';
+            document.getElementById('vmodal-overlay').classList.remove('open');
+            document.getElementById('vmodal').classList.remove('open');
+        }
+
+        document.getElementById('vmodal-close').addEventListener('click', closeVideoModal);
+        document.getElementById('vmodal-overlay').addEventListener('click', closeVideoModal);
 
         // ══════════════════════════════════════════════
         // LAZY LOADING
@@ -2184,6 +2282,10 @@
                     imtLoadTag(imtTagList[prev], 0, 'right');
                 }
             }
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape' && document.getElementById('vmodal').classList.contains('open')) closeVideoModal();
         });
 
         document.addEventListener('keydown', e => {
