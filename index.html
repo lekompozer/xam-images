@@ -1836,22 +1836,53 @@
             hdr.appendChild(watchBtn);
             card.appendChild(hdr);
 
-            // ── Click-to-play placeholder (both mobile and desktop) ──
-            const ph = document.createElement('div');
-            ph.className = 'video-placeholder';
-            const icon = document.createElement('div');
-            icon.className = 'vp-icon';
-            icon.textContent = '▶️';
-            const lbl = document.createElement('div');
-            lbl.className = 'vp-label';
-            lbl.textContent = IS_MOBILE ? 'Tap to play' : 'Click to play';
-            ph.appendChild(icon);
-            ph.appendChild(lbl);
+            if (IS_MOBILE) {
+                // Mobile: static placeholder → tap opens modal
+                const ph = document.createElement('div');
+                ph.className = 'video-placeholder';
+                const icon = document.createElement('div');
+                icon.className = 'vp-icon';
+                icon.textContent = '▶️';
+                const lbl = document.createElement('div');
+                lbl.className = 'vp-label';
+                lbl.textContent = 'Tap to play';
+                ph.appendChild(icon);
+                ph.appendChild(lbl);
+                ph.addEventListener('click', () => openVideoModal(item.url, item.title || ''));
+                card.appendChild(ph);
+            } else {
+                // Desktop: real <video> with preload so browser auto-generates poster thumbnail.
+                // No controls shown — click always opens modal.
+                const vid = document.createElement('video');
+                vid.preload = 'metadata';
+                vid.playsinline = true;
+                vid.style.cssText = 'width:100%;max-height:460px;display:block;background:#000;cursor:pointer;outline:none;';
+                vid.addEventListener('contextmenu', e => e.preventDefault());
+                vid.src = item.url;
 
-            // Click → open full-size modal
-            ph.addEventListener('click', () => openVideoModal(item.url, item.title || ''));
+                // Auto-capture poster from first frame via canvas
+                vid.addEventListener('loadedmetadata', () => { vid.currentTime = 0.01; }, { once: true });
+                vid.addEventListener('seeked', () => {
+                    try {
+                        const c = document.createElement('canvas');
+                        c.width = vid.videoWidth || 320;
+                        c.height = vid.videoHeight || 180;
+                        c.getContext('2d').drawImage(vid, 0, 0, c.width, c.height);
+                        vid.poster = c.toDataURL('image/jpeg', 0.75);
+                    } catch (e) { }
+                }, { once: true });
 
-            card.appendChild(ph);
+                // Dead link → remove card
+                vid.addEventListener('error', () => card.remove());
+
+                // Click → open full-size modal instead of inline play
+                vid.addEventListener('click', e => {
+                    e.preventDefault();
+                    openVideoModal(item.url, item.title || '');
+                });
+
+                card.appendChild(vid);
+            }
             document.getElementById('gallery').appendChild(card);
             return card;
         }
